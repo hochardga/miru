@@ -19,5 +19,9 @@ describe("HomePage", () => {
       "href",
       "/rules",
     );
+    expect(screen.getByRole("link", { name: /settings/i })).toHaveAttribute(
+      "href",
+      "/settings",
+    );
   });
 });
