@@ -34,12 +34,13 @@ create table runs (
   pending_prompt jsonb,
   last_journal_entry text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  unique (id, user_id)
 );
 
 create table run_tiles (
   id uuid primary key default gen_random_uuid(),
-  run_id uuid not null references runs(id) on delete cascade,
+  run_id uuid not null,
   user_id uuid not null references auth.users(id) on delete cascade,
   row_number integer not null check (row_number between 1 and 12),
   column_letter char(1) not null check (column_letter between 'A' and 'I'),
@@ -52,16 +53,19 @@ create table run_tiles (
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  unique (id, run_id),
+  constraint run_tiles_run_owner_fk
+    foreign key (run_id, user_id) references runs(id, user_id) on delete cascade,
   unique (run_id, row_number, column_letter)
 );
 
 alter table runs
   add constraint runs_current_tile_fk
-  foreign key (current_tile_id) references run_tiles(id);
+  foreign key (current_tile_id, id) references run_tiles(id, run_id);
 
 create table run_inventory (
   id uuid primary key default gen_random_uuid(),
-  run_id uuid not null references runs(id) on delete cascade,
+  run_id uuid not null,
   user_id uuid not null references auth.users(id) on delete cascade,
   item_key varchar(120) not null,
   item_name varchar(160) not null,
@@ -70,12 +74,14 @@ create table run_inventory (
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  constraint run_inventory_run_owner_fk
+    foreign key (run_id, user_id) references runs(id, user_id) on delete cascade,
   unique (run_id, item_key)
 );
 
 create table tech_skills (
   id uuid primary key default gen_random_uuid(),
-  run_id uuid not null references runs(id) on delete cascade,
+  run_id uuid not null,
   user_id uuid not null references auth.users(id) on delete cascade,
   skill_key varchar(120) not null,
   skill_name varchar(160) not null,
@@ -83,23 +89,27 @@ create table tech_skills (
   training_level integer not null default 0 check (training_level between 0 and 6),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  constraint tech_skills_run_owner_fk
+    foreign key (run_id, user_id) references runs(id, user_id) on delete cascade,
   unique (run_id, skill_key)
 );
 
 create table journal_entries (
   id uuid primary key default gen_random_uuid(),
-  run_id uuid not null references runs(id) on delete cascade,
+  run_id uuid not null,
   user_id uuid not null references auth.users(id) on delete cascade,
   day_number integer not null check (day_number >= 1),
   tile_id uuid references run_tiles(id) on delete set null,
   body text not null check (char_length(body) <= 1000),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint journal_entries_run_owner_fk
+    foreign key (run_id, user_id) references runs(id, user_id) on delete cascade
 );
 
 create table action_log (
   id uuid primary key default gen_random_uuid(),
-  run_id uuid not null references runs(id) on delete cascade,
+  run_id uuid not null,
   user_id uuid not null references auth.users(id) on delete cascade,
   action_type action_type not null,
   day_number integer not null,
@@ -107,7 +117,9 @@ create table action_log (
   input jsonb not null default '{}'::jsonb,
   result jsonb not null default '{}'::jsonb,
   dice_rolls jsonb not null default '[]'::jsonb,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint action_log_run_owner_fk
+    foreign key (run_id, user_id) references runs(id, user_id) on delete cascade
 );
 
 create table content_versions (
