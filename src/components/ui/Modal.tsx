@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/Panel";
 
@@ -10,14 +10,70 @@ interface ModalProps {
 }
 
 export function Modal({ open, title, description, onClose }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) {
       return;
     }
 
+    const panel = panelRef.current;
+    const focusableSelector =
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
+    const getFocusableElements = () =>
+      panel
+        ? Array.from(panel.querySelectorAll<HTMLElement>(focusableSelector))
+            .filter(
+              (element) =>
+                !element.hasAttribute("disabled") &&
+                element.getAttribute("aria-hidden") !== "true",
+            )
+        : [];
+
+    const focusableElements = getFocusableElements();
+    const firstElement = focusableElements[0];
+
+    if (firstElement) {
+      firstElement.focus();
+    } else {
+      panel?.focus();
+    }
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         onClose();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const currentFocusableElements = getFocusableElements();
+
+      if (currentFocusableElements.length === 0) {
+        event.preventDefault();
+        panel?.focus();
+        return;
+      }
+
+      const firstFocusable = currentFocusableElements[0];
+      const lastFocusable =
+        currentFocusableElements[currentFocusableElements.length - 1];
+      const activeElement = document.activeElement;
+
+      if (event.shiftKey) {
+        if (activeElement === firstFocusable || activeElement === panel) {
+          event.preventDefault();
+          lastFocusable.focus();
+        }
+        return;
+      }
+
+      if (activeElement === lastFocusable) {
+        event.preventDefault();
+        firstFocusable.focus();
       }
     };
 
@@ -32,9 +88,11 @@ export function Modal({ open, title, description, onClose }: ModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-text/25 p-4">
       <Panel
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="phase0-modal-title"
+        tabIndex={-1}
         className="w-full max-w-md rounded-lg"
       >
         <div className="space-y-3">
