@@ -99,10 +99,12 @@ create table journal_entries (
   run_id uuid not null,
   user_id uuid not null references auth.users(id) on delete cascade,
   day_number integer not null check (day_number >= 1),
-  tile_id uuid references run_tiles(id) on delete set null,
+  tile_id uuid,
   body text not null check (char_length(body) <= 1000),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  constraint journal_entries_tile_same_run_fk
+    foreign key (tile_id, run_id) references run_tiles(id, run_id),
   constraint journal_entries_run_owner_fk
     foreign key (run_id, user_id) references runs(id, user_id) on delete cascade
 );
@@ -112,15 +114,41 @@ create table action_log (
   run_id uuid not null,
   user_id uuid not null references auth.users(id) on delete cascade,
   action_type action_type not null,
-  day_number integer not null,
-  tile_id uuid references run_tiles(id) on delete set null,
+  day_number integer not null check (day_number >= 1),
+  tile_id uuid,
   input jsonb not null default '{}'::jsonb,
   result jsonb not null default '{}'::jsonb,
   dice_rolls jsonb not null default '[]'::jsonb,
   created_at timestamptz not null default now(),
+  constraint action_log_tile_same_run_fk
+    foreign key (tile_id, run_id) references run_tiles(id, run_id),
   constraint action_log_run_owner_fk
     foreign key (run_id, user_id) references runs(id, user_id) on delete cascade
 );
+
+create or replace function clear_run_tile_references()
+returns trigger
+language plpgsql
+as $$
+begin
+  update journal_entries
+  set tile_id = null
+  where run_id = old.run_id
+    and tile_id = old.id;
+
+  update action_log
+  set tile_id = null
+  where run_id = old.run_id
+    and tile_id = old.id;
+
+  return old;
+end;
+$$;
+
+create trigger run_tiles_clear_references_before_delete
+before delete on run_tiles
+for each row
+execute function clear_run_tile_references();
 
 create table content_versions (
   id uuid primary key default gen_random_uuid(),

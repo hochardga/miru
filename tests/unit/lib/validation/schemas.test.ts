@@ -71,4 +71,18 @@ describe("runsQuerySchema", () => {
       }),
     ).toThrowError();
   });
+
+  it("rejects decimal and non-numeric limits", () => {
+    expect(() =>
+      runsQuerySchema.parse({
+        limit: "1.5",
+      }),
+    ).toThrowError();
+
+    expect(() =>
+      runsQuerySchema.parse({
+        limit: "banana",
+      }),
+    ).toThrowError();
+  });
 });
