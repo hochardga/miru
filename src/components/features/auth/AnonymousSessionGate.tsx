@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 type ActionTarget = "start" | "rules" | "settings" | "runs";
+type RestoreState = "idle" | "loading" | "failed";
 
 type RunsResponse = {
   ok: true;
   data: {
     runs: Array<{
       id: string;
+      status: string;
     }>;
   };
 };
@@ -25,6 +27,18 @@ type StartRunResponse = {
 
 const AUTH_ERROR_MESSAGE =
   "Anonymous auth failed. Try again to prepare your table and save progress.";
+const RESTORE_ERROR_MESSAGE =
+  "Could not restore your latest run. Retry or open All Runs.";
+
+function getResumableLatestRunId(payload: RunsResponse) {
+  const latestRun = payload.data.runs[0];
+
+  if (!latestRun || latestRun.status !== "active") {
+    return null;
+  }
+
+  return latestRun.id;
+}
 
 export function AnonymousSessionGate() {
   const router = useRouter();
@@ -32,40 +46,45 @@ export function AnonymousSessionGate() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [latestRunId, setLatestRunId] = useState<string | null>(null);
   const [pendingLabel, setPendingLabel] = useState<ActionTarget | null>(null);
+  const [restoreState, setRestoreState] = useState<RestoreState>("idle");
+  const hasHydratedLatestRunRef = useRef(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  const hydrateLatestRun = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
 
-    async function hydrateLatestRun() {
-      try {
-        const { data } = await supabase.auth.getSession();
-
-        if (!data.session) {
-          return;
-        }
-
-        const response = await fetch("/api/runs?limit=1");
-
-        if (!response.ok) {
-          return;
-        }
-
-        const payload = (await response.json()) as RunsResponse;
-
-        if (isMounted) {
-          setLatestRunId(payload.data.runs[0]?.id ?? null);
-        }
-      } catch {
-        // Quietly fall back to the default action label if restoration fails.
-      }
+    if (!data.session) {
+      setLatestRunId(null);
+      setRestoreState("idle");
+      return;
     }
 
-    void hydrateLatestRun();
+    setRestoreState("loading");
 
-    return () => {
-      isMounted = false;
-    };
+    try {
+      const response = await fetch("/api/runs?limit=1");
+
+      if (!response.ok) {
+        throw new Error("latest-run-restore-failed");
+      }
+
+      const payload = (await response.json()) as RunsResponse;
+      setLatestRunId(getResumableLatestRunId(payload));
+      setRestoreState("idle");
+    } catch {
+      setLatestRunId(null);
+      setRestoreState("failed");
+    }
   }, [supabase]);
+
+  useEffect(() => {
+    if (hasHydratedLatestRunRef.current) {
+      return;
+    }
+
+    // Avoid duplicate latest-run hydration during development effect replays.
+    hasHydratedLatestRunRef.current = true;
+    void hydrateLatestRun();
+  }, [hydrateLatestRun]);
 
   async function ensureSession() {
     const { data } = await supabase.auth.getSession();
@@ -108,6 +127,11 @@ export function AnonymousSessionGate() {
         return;
       }
 
+      if (target === "runs" && latestRunId) {
+        router.push(`/play/${latestRunId}`);
+        return;
+      }
+
       router.push(`/${target}`);
     } catch (error) {
       setErrorMessage(
@@ -143,20 +167,33 @@ export function AnonymousSessionGate() {
         </Button>
         <Button
           variant="secondary"
-          disabled={pendingLabel !== null}
-          onClick={() => {
-            if (latestRunId) {
-              setErrorMessage(null);
-              router.push(`/play/${latestRunId}`);
-              return;
-            }
-
-            void handleProtectedAction("runs");
-          }}
+          disabled={pendingLabel !== null || restoreState === "loading"}
+          onClick={() => void handleProtectedAction("runs")}
         >
-          {latestRunId ? "Continue Latest Run" : "All Runs"}
+          {restoreState === "loading"
+            ? "Checking Latest Run..."
+            : latestRunId
+              ? "Continue Latest Run"
+              : "All Runs"}
         </Button>
       </div>
+
+      {restoreState === "loading" ? (
+        <p className="text-sm text-ink-muted">Restoring your latest run...</p>
+      ) : null}
+
+      {restoreState === "failed" ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-status-error">{RESTORE_ERROR_MESSAGE}</p>
+          <Button
+            variant="ghost"
+            disabled={pendingLabel !== null}
+            onClick={() => void hydrateLatestRun()}
+          >
+            Retry restore
+          </Button>
+        </div>
+      ) : null}
 
       {errorMessage ? (
         <p className="text-sm text-status-error">{errorMessage}</p>

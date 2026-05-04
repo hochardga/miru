@@ -68,9 +68,14 @@ describe("AnonymousSessionGate", () => {
     });
   });
 
-  it("restores the latest run when a session already exists", async () => {
-    getSession.mockResolvedValue({
+  it("restores an expired session before continuing the latest run", async () => {
+    getSession.mockResolvedValueOnce({
       data: { session: { user: { id: "user-1" } } },
+    });
+    getSession.mockResolvedValueOnce({ data: { session: null } });
+    signInAnonymously.mockResolvedValue({
+      data: { session: { user: { id: "user-1" } } },
+      error: null,
     });
     fetchMock.mockResolvedValueOnce({
       ok: true,
@@ -103,7 +108,10 @@ describe("AnonymousSessionGate", () => {
 
     await user.click(continueButton);
 
-    expect(push).toHaveBeenCalledWith("/play/run-9");
+    await waitFor(() => {
+      expect(signInAnonymously).toHaveBeenCalled();
+      expect(push).toHaveBeenCalledWith("/play/run-9");
+    });
   });
 
   it("pushes the runs route after creating a session when no latest run exists", async () => {
@@ -122,6 +130,85 @@ describe("AnonymousSessionGate", () => {
       expect(signInAnonymously).toHaveBeenCalled();
       expect(push).toHaveBeenCalledWith("/runs");
     });
+  });
+
+  it("falls back to All Runs when the latest restored run is not active", async () => {
+    getSession.mockResolvedValue({
+      data: { session: { user: { id: "user-1" } } },
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: {
+          runs: [
+            {
+              id: "run-4",
+              title: "Finished Log",
+              status: "completed",
+              current_day: 3,
+              updated_at: "2026-05-04T00:00:00.000Z",
+              last_journal_entry: null,
+            },
+          ],
+        },
+      }),
+    });
+
+    render(<AnonymousSessionGate />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/runs?limit=1");
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /continue latest run/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /all runs/i })).toBeInTheDocument();
+  });
+
+  it("surfaces restore failure and allows retrying latest-run hydration", async () => {
+    getSession.mockResolvedValue({
+      data: { session: { user: { id: "user-1" } } },
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: {
+          runs: [
+            {
+              id: "run-7",
+              title: "Recovered Run",
+              status: "active",
+              current_day: 2,
+              updated_at: "2026-05-04T00:00:00.000Z",
+              last_journal_entry: null,
+            },
+          ],
+        },
+      }),
+    });
+
+    const user = userEvent.setup();
+
+    render(<AnonymousSessionGate />);
+
+    expect(
+      await screen.findByText(/could not restore your latest run\. retry or open all runs\./i),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /retry restore/i }));
+
+    expect(
+      await screen.findByRole("button", { name: /continue latest run/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/could not restore your latest run\. retry or open all runs\./i),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a friendly error when anonymous auth fails", async () => {
