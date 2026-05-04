@@ -41,14 +41,23 @@ export async function getRunShell(
     return null;
   }
 
+  if (!run.current_tile_id) {
+    return null;
+  }
+
   const { data: tile, error: tileError } = await supabase
     .from("run_tiles")
     .select("id,row_number,column_letter,terrain,visited")
     .eq("id", run.current_tile_id)
+    .eq("run_id", run.id)
     .maybeSingle();
 
   if (tileError) {
     throw tileError;
+  }
+
+  if (!tile) {
+    return null;
   }
 
   const { data: mealBar, error: mealBarError } = await supabase

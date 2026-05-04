@@ -101,6 +101,28 @@ describe("/api/runs", () => {
     expect(mockListRuns).toHaveBeenCalledWith(supabase, "user-1", 10);
   });
 
+  it("returns 400 from GET when limit is invalid", async () => {
+    mockGetRouteUser.mockResolvedValue({
+      supabase: {},
+      user: { id: "user-1" },
+    });
+
+    const { GET } = await import("@/app/api/runs/route");
+    const response = await GET(
+      new Request("http://localhost/api/runs?limit=banana"),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "BAD_REQUEST",
+        message: "Invalid runs query.",
+      },
+    });
+    expect(mockListRuns).not.toHaveBeenCalled();
+  });
+
   it("returns 401 from GET when no user session exists", async () => {
     mockGetRouteUser.mockResolvedValue({
       supabase: {},
@@ -119,6 +141,90 @@ describe("/api/runs", () => {
         code: "UNAUTHORIZED",
         message: "Start from the home screen to create or restore your Miru session.",
       },
+    });
+  });
+
+  it("returns 400 from POST when JSON is malformed", async () => {
+    mockGetRouteUser.mockResolvedValue({
+      supabase: {},
+      user: { id: "user-1" },
+    });
+
+    const { POST } = await import("@/app/api/runs/route");
+    const response = await POST(
+      new Request("http://localhost/api/runs", {
+        method: "POST",
+        body: "{",
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "BAD_REQUEST",
+        message: "Request body must be valid JSON.",
+      },
+    });
+    expect(mockBootstrapRun).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 from POST when the payload fails validation", async () => {
+    mockGetRouteUser.mockResolvedValue({
+      supabase: {},
+      user: { id: "user-1" },
+    });
+
+    const { POST } = await import("@/app/api/runs/route");
+    const response = await POST(
+      new Request("http://localhost/api/runs", {
+        method: "POST",
+        body: JSON.stringify({ startingColumn: "Z" }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "BAD_REQUEST",
+        message: "Invalid run start payload.",
+      },
+    });
+    expect(mockBootstrapRun).not.toHaveBeenCalled();
+  });
+
+  it("treats an empty POST body as the default run payload", async () => {
+    const supabase = {};
+
+    mockGetRouteUser.mockResolvedValue({
+      supabase,
+      user: { id: "user-1" },
+    });
+    mockBootstrapRun.mockResolvedValue({
+      runId: "run-1",
+      currentTileId: "tile-1",
+    });
+
+    const { POST } = await import("@/app/api/runs/route");
+    const response = await POST(
+      new Request("http://localhost/api/runs", {
+        method: "POST",
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      data: {
+        runId: "run-1",
+        currentTileId: "tile-1",
+      },
+    });
+    expect(mockBootstrapRun).toHaveBeenCalledWith({
+      supabase,
+      userId: "user-1",
+      input: {},
     });
   });
 });

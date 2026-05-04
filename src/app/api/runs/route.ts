@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { bootstrapRun } from "@/lib/runs/bootstrap";
 import { listRuns } from "@/lib/runs/queries";
 import { getRouteUser } from "@/lib/supabase/server";
-import { runsQuerySchema } from "@/lib/validation/schemas";
+import { runsQuerySchema, startRunRequestSchema } from "@/lib/validation/schemas";
+
+const INVALID_JSON = Symbol("invalid-json");
 
 function unauthorized() {
   return NextResponse.json(
@@ -17,6 +19,33 @@ function unauthorized() {
   );
 }
 
+function badRequest(message: string) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: {
+        code: "BAD_REQUEST",
+        message,
+      },
+    },
+    { status: 400 },
+  );
+}
+
+async function readJsonBody(request: Request) {
+  const rawBody = await request.text();
+
+  if (rawBody.trim().length === 0) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(rawBody) as unknown;
+  } catch {
+    return INVALID_JSON;
+  }
+}
+
 export async function GET(request: Request) {
   const { supabase, user } = await getRouteUser();
 
@@ -25,11 +54,15 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const { limit } = runsQuerySchema.parse({
+  const parsedQuery = runsQuerySchema.safeParse({
     limit: searchParams.get("limit") ?? "5",
   });
 
-  const runs = await listRuns(supabase, user.id, limit);
+  if (!parsedQuery.success) {
+    return badRequest("Invalid runs query.");
+  }
+
+  const runs = await listRuns(supabase, user.id, parsedQuery.data.limit);
 
   return NextResponse.json({
     ok: true,
@@ -44,7 +77,18 @@ export async function POST(request: Request) {
     return unauthorized();
   }
 
-  const body = await request.json().catch(() => ({}));
+  const body = await readJsonBody(request);
+
+  if (body === INVALID_JSON) {
+    return badRequest("Request body must be valid JSON.");
+  }
+
+  const parsedBody = startRunRequestSchema.safeParse(body);
+
+  if (!parsedBody.success) {
+    return badRequest("Invalid run start payload.");
+  }
+
   const data = await bootstrapRun({
     supabase,
     userId: user.id,

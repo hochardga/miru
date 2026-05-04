@@ -2,6 +2,10 @@ import type { createServerSupabaseClient } from "@/lib/supabase/server";
 import { startRunRequestSchema } from "@/lib/validation/schemas";
 
 type RouteSupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
+type BootstrapRunRow = {
+  run_id: string;
+  current_tile_id: string;
+};
 
 type BootstrapArgs = {
   supabase: RouteSupabaseClient;
@@ -12,105 +16,24 @@ type BootstrapArgs = {
 export async function bootstrapRun({ supabase, userId, input }: BootstrapArgs) {
   const payload = startRunRequestSchema.parse(input ?? {});
 
-  const { error: profileError } = await supabase.from("profiles").upsert({
-    id: userId,
-    is_anonymous: true,
+  const { data, error } = await supabase.rpc("bootstrap_run", {
+    p_user_id: userId,
+    p_title: payload.title ?? null,
+    p_starting_column: payload.startingColumn,
   });
 
-  if (profileError) {
-    throw profileError;
+  if (error) {
+    throw error;
   }
 
-  const { data: existingRun, error: existingRunError } = await supabase
-    .from("runs")
-    .select("id,current_tile_id")
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const row = (Array.isArray(data) ? data[0] : data) as BootstrapRunRow | null;
 
-  if (existingRunError) {
-    throw existingRunError;
-  }
-
-  if (existingRun?.id && existingRun.current_tile_id) {
-    return {
-      runId: existingRun.id,
-      currentTileId: existingRun.current_tile_id,
-    };
-  }
-
-  const { data: run, error: runError } = await supabase
-    .from("runs")
-    .insert({
-      user_id: userId,
-      title: payload.title ?? "Miru Run",
-    })
-    .select("id,current_day")
-    .single();
-
-  if (runError) {
-    throw runError;
-  }
-
-  const { data: tile, error: tileError } = await supabase
-    .from("run_tiles")
-    .insert({
-      run_id: run.id,
-      user_id: userId,
-      row_number: 1,
-      column_letter: payload.startingColumn,
-      terrain: "unknown",
-      visited: true,
-    })
-    .select("id")
-    .single();
-
-  if (tileError) {
-    throw tileError;
-  }
-
-  const { error: runUpdateError } = await supabase
-    .from("runs")
-    .update({ current_tile_id: tile.id })
-    .eq("id", run.id);
-
-  if (runUpdateError) {
-    throw runUpdateError;
-  }
-
-  const { error: inventoryError } = await supabase.from("run_inventory").insert({
-    run_id: run.id,
-    user_id: userId,
-    item_key: "meal-bar",
-    item_name: "Meal Bar",
-    category: "food",
-    quantity: 3,
-  });
-
-  if (inventoryError) {
-    throw inventoryError;
-  }
-
-  const { error: actionLogError } = await supabase.from("action_log").insert({
-    run_id: run.id,
-    user_id: userId,
-    action_type: "start_run",
-    day_number: 1,
-    tile_id: tile.id,
-    input: payload,
-    result: {
-      message: "Phase 0 placeholder run created.",
-    },
-  });
-
-  if (actionLogError) {
-    throw actionLogError;
+  if (!row?.run_id || !row.current_tile_id) {
+    throw new Error("bootstrap_run returned an incomplete result.");
   }
 
   return {
-    runId: run.id,
-    currentTileId: tile.id,
+    runId: row.run_id,
+    currentTileId: row.current_tile_id,
   };
 }
