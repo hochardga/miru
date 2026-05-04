@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/Panel";
 
@@ -11,6 +11,13 @@ interface ModalProps {
 
 export function Modal({ open, title, description, onClose }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  const titleId = useId();
+  const descriptionId = useId();
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) {
@@ -18,6 +25,10 @@ export function Modal({ open, title, description, onClose }: ModalProps) {
     }
 
     const panel = panelRef.current;
+    const previousFocusedElement =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     const focusableSelector =
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -42,7 +53,7 @@ export function Modal({ open, title, description, onClose }: ModalProps) {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -78,8 +89,18 @@ export function Modal({ open, title, description, onClose }: ModalProps) {
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, open]);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+
+      if (
+        previousFocusedElement &&
+        previousFocusedElement.isConnected &&
+        typeof previousFocusedElement.focus === "function"
+      ) {
+        previousFocusedElement.focus();
+      }
+    };
+  }, [open]);
 
   if (!open) {
     return null;
@@ -91,15 +112,18 @@ export function Modal({ open, title, description, onClose }: ModalProps) {
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="phase0-modal-title"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
         tabIndex={-1}
         className="w-full max-w-md rounded-lg"
       >
         <div className="space-y-3">
-          <h2 id="phase0-modal-title" className="font-heading text-2xl">
+          <h2 id={titleId} className="font-heading text-2xl">
             {title}
           </h2>
-          <p className="text-sm text-ink-muted">{description}</p>
+          <p id={descriptionId} className="text-sm text-ink-muted">
+            {description}
+          </p>
           <div className="flex justify-end">
             <Button variant="secondary" onClick={onClose}>
               Close

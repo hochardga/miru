@@ -44,4 +44,41 @@ describe("HomePage", () => {
     await user.tab({ shift: true });
     expect(closeButton).toHaveFocus();
   });
+
+  it("wires the modal title and description with dialog accessibility attributes", async () => {
+    const user = userEvent.setup();
+
+    render(<HomePage />);
+
+    await user.click(
+      screen.getByRole("button", { name: /open phase 0 notes/i }),
+    );
+
+    const dialog = screen.getByRole("dialog", { name: /phase 0 slice/i });
+    const title = screen.getByRole("heading", { name: /phase 0 slice/i });
+    const description = screen.getByText(/this screen should already feel intentional/i);
+
+    expect(title.id).not.toBe("");
+    expect(description.id).not.toBe("");
+    expect(dialog).toHaveAttribute("aria-labelledby", title.id);
+    expect(dialog).toHaveAttribute("aria-describedby", description.id);
+  });
+
+  it("closes the modal on escape and restores focus to the trigger", async () => {
+    const user = userEvent.setup();
+
+    render(<HomePage />);
+
+    const trigger = screen.getByRole("button", {
+      name: /open phase 0 notes/i,
+    });
+
+    await user.click(trigger);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
 });

@@ -37,4 +37,12 @@ describe("Button", () => {
       "w-11",
     );
   });
+
+  it("preserves the shared visible focus indicator", () => {
+    render(<Button>Start Run</Button>);
+
+    expect(screen.getByRole("button", { name: /start run/i })).not.toHaveClass(
+      "focus-visible:outline-none",
+    );
+  });
 });
