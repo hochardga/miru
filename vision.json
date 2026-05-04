@@ -1,0 +1,82 @@
+{
+  "meta": {
+    "createdAt": "2026-05-04T12:17:53Z",
+    "updatedAt": "2026-05-04T12:17:53Z",
+    "version": "1.0",
+    "plaidVersion": "1.0"
+  },
+  "creator": {
+    "name": "Gerg",
+    "expertise": "Software developer with years of experience building enterprise tools; formerly a full-stack developer and now a customer-facing executive at a product company.",
+    "background": "My career has mostly been in serious enterprise tools, and this is a more personal, creative project. Miru feels like the kind of compact, rules-rich game that would be fun to translate into software: part game engine, part journal, part companion for a solo adventure."
+  },
+  "purpose": {
+    "whoYouHelp": "Digitally native RPG players who are curious about solo pen-and-paper games but bounce off PDFs, printouts, manual dice tables, and uncertainty about what to do next.",
+    "problemYouSolve": "They are interested in solo RPGs, but the first-session friction is too high: PDF reading, map setup, character sheet tracking, dice tables, survival rules, and uncertainty about the next legal action all arrive at once.",
+    "desiredTransformation": "Miru becomes a cozy, repeatable digital ritual: open the app, take one meaningful day in the wasteland, make a few choices, write a short journal entry, and come back later without losing context.",
+    "whyYou": "I have spent enough time around enterprise tools to know what over-designed software feels like. For Miru, I want to build the opposite: a focused, tactile, low-friction experience that respects the source game."
+  },
+  "product": {
+    "name": "Miru Digital",
+    "oneLiner": "Miru Digital helps new solo RPG players explore Miru without rulebook friction.",
+    "howItWorks": "A player lands on a focused play table with the map on one side, character state nearby, and a guided Next Day flow that reveals only the rules and options needed for the current moment. The app resolves dice rolls, turn routing, survival, events, combat, and journaling in context while keeping the player in charge of choices and interpretation.",
+    "keyCapabilities": [
+      "Full guided day and turn flow",
+      "Character, inventory, HP, EP, survival, and progress tracking",
+      "Interactive hex map with terrain, icons, discoveries, and event history",
+      "Combat, survival, reward, and rules resolvers",
+      "Full event database, item catalog, rules lookup, visual token placement, run history, and challenge mode support"
+    ],
+    "platform": "web",
+    "marketDifferentiation": "Unlike tabletop virtual tabletops, Miru Digital is purpose-built for one game and one player, so it can be faster, calmer, and more intimate than a flexible tool meant to support everything.",
+    "magicMoment": "The player taps Next Day, and the app quietly stitches together the terrain roll, event logic, survival needs, and valid choices into one clean flow, making Miru feel playable immediately."
+  },
+  "audience": {
+    "primaryUser": "Sam, the indie game explorer. Sam plays atmospheric games, roguelites, and narrative indies, and is curious about solo RPGs but intimidated by PDFs and manual setup. Sam wants the feeling of discovering a strange world without spending the first session learning how to administer the game.",
+    "secondaryUsers": [
+      "Solo RPG hobbyists who play games like Ironsworn, Thousand Year Old Vampire, or journaling RPGs, and want a polished digital interpretation of a rules-rich indie title."
+    ],
+    "currentAlternatives": "Many curious players buy or download solo RPGs, skim the rules, maybe start setup, then abandon the game because the first session feels too effortful. More committed players may use the Miru PDF, printed map and character sheet, physical dice, notes apps, generic dice rollers, spreadsheets, or virtual tabletops.",
+    "frustrations": "Current options scatter the experience across too many surfaces: PDF, map, sheet, dice roller, notes, and rule lookups all compete for attention during what should be a focused adventure."
+  },
+  "business": {
+    "revenueModel": "free",
+    "initialGoal": "Within 90 days, Miru Digital should be a rules-complete polished game covering the full Miru 1 v2e solo play loop, with reliable saves, a complete rules engine, verified source-derived content, and enough polish for meaningful private testing.",
+    "sixMonthVision": "Miru Digital is a polished, rules-complete mobile web app with reliable saves, full Miru 1 v2e rules coverage, a strong onboarding flow, and a small group of solo RPG players actively completing runs.",
+    "constraints": "This is a part-time founder-builder project with a low budget and strong technical ability, but limited time for exhaustive rule transcription and QA. Rights and licensing for a public digital adaptation of Miru need clarification before any public launch.",
+    "goToMarket": "Follow a rights-first launch path: contact the Miru creator or publisher early, present a polished prototype, and use permission or partnership status to decide whether this becomes public, private, or renamed as an inspired-by project."
+  },
+  "feeling": {
+    "brandPersonality": "Patient Game Master: warm, clear, and encouraging. The product makes solo play feel less lonely while still leaving the player in control.",
+    "visualMood": "Analog field kit: muted map-paper tones, ink-like markings, restrained color accents for danger and resources, sturdy readable type, and a tactile notebook feel without faux-leather clutter.",
+    "toneOfVoice": "Clear and companionable: concise prompts with a little warmth. Example success: Camp is set. Eat, rest, and mark the day. Example error: You need a valid adjacent tile before moving.",
+    "antiPatterns": "Never feel like a flashy mobile RPG trying to replace Miru with animations, loot dopamine, gacha-like rewards, or overproduced combat effects."
+  },
+  "techStack": {
+    "appType": "web",
+    "frontend": {
+      "choice": "Next.js + React + TypeScript",
+      "rationale": "Best fit for a mobile-first web app with strong routing, deployability, TypeScript support, and room to grow into a PWA-style experience while still letting the core play table feel like an app."
+    },
+    "backend": {
+      "choice": "Supabase",
+      "rationale": "Chosen to make the product cloud-ready from the start, with managed backend services that can support saved runs, rules content metadata, anonymous users, and future account upgrades."
+    },
+    "database": {
+      "choice": "Supabase Postgres",
+      "rationale": "Matches the backend choice and provides a durable relational store for runs, map tiles, inventory, journal entries, event history, and other structured game state."
+    },
+    "auth": {
+      "choice": "Supabase Anonymous Auth",
+      "rationale": "Players can start immediately as guests while each saved run still has an authenticated owner for Supabase row-level security. Email upgrade can be added later for account recovery and cross-device continuity."
+    },
+    "payments": {
+      "choice": "",
+      "rationale": "Skipped because the revenue model is free for now. Payment infrastructure can be added later if monetization becomes part of the product."
+    }
+  },
+  "tooling": {
+    "codingAgent": "other",
+    "codingAgentName": "Codex"
+  }
+}
