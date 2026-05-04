@@ -68,15 +68,11 @@ describe("AnonymousSessionGate", () => {
     });
   });
 
-  it("restores an expired session before continuing the latest run", async () => {
+  it("clears a stale latest run when the guest session is no longer available", async () => {
     getSession.mockResolvedValueOnce({
       data: { session: { user: { id: "user-1" } } },
     });
     getSession.mockResolvedValueOnce({ data: { session: null } });
-    signInAnonymously.mockResolvedValue({
-      data: { session: { user: { id: "user-1" } } },
-      error: null,
-    });
     fetchMock.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -108,10 +104,17 @@ describe("AnonymousSessionGate", () => {
 
     await user.click(continueButton);
 
-    await waitFor(() => {
-      expect(signInAnonymously).toHaveBeenCalled();
-      expect(push).toHaveBeenCalledWith("/play/run-9");
-    });
+    expect(signInAnonymously).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalledWith("/play/run-9");
+    expect(
+      await screen.findByText(
+        /your previous guest session is no longer available in this browser\. start a new run or open all runs\./i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /continue latest run/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /all runs/i })).toBeInTheDocument();
   });
 
   it("pushes the runs route after creating a session when no latest run exists", async () => {

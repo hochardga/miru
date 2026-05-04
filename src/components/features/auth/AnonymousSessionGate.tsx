@@ -29,6 +29,8 @@ const AUTH_ERROR_MESSAGE =
   "Anonymous auth failed. Try again to prepare your table and save progress.";
 const RESTORE_ERROR_MESSAGE =
   "Could not restore your latest run. Retry or open All Runs.";
+const STALE_SESSION_MESSAGE =
+  "Your previous guest session is no longer available in this browser. Start a new run or open All Runs.";
 
 function getResumableLatestRunId(payload: RunsResponse) {
   const latestRun = payload.data.runs[0];
@@ -107,6 +109,19 @@ export function AnonymousSessionGate() {
     setPendingLabel(target);
 
     try {
+      if (target === "runs" && latestRunId) {
+        const { data } = await supabase.auth.getSession();
+
+        if (!data.session) {
+          setLatestRunId(null);
+          setErrorMessage(STALE_SESSION_MESSAGE);
+          return;
+        }
+
+        router.push(`/play/${latestRunId}`);
+        return;
+      }
+
       await ensureSession();
 
       if (target === "start") {
@@ -124,11 +139,6 @@ export function AnonymousSessionGate() {
 
         const payload = (await response.json()) as StartRunResponse;
         router.push(`/play/${payload.data.runId}`);
-        return;
-      }
-
-      if (target === "runs" && latestRunId) {
-        router.push(`/play/${latestRunId}`);
         return;
       }
 
