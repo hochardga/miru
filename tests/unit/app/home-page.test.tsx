@@ -1,7 +1,18 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import HomePage from "@/app/page";
+
+vi.mock("@/components/features/auth/AnonymousSessionGate", () => ({
+  AnonymousSessionGate: () => (
+    <div data-testid="anonymous-session-gate">
+      <button type="button">Start Run</button>
+      <button type="button">Rules</button>
+      <button type="button">Settings</button>
+      <button type="button">All Runs</button>
+    </div>
+  ),
+}));
 
 describe("HomePage", () => {
   it("renders the Miru field-kit landing shell", () => {
@@ -13,16 +24,40 @@ describe("HomePage", () => {
     expect(
       screen.getByText(/guided solo play table/i),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start run/i })).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /start run/i }),
-    ).toHaveClass("min-h-11");
-    expect(screen.getByRole("link", { name: /rules/i })).toHaveAttribute(
-      "href",
-      "/rules",
+      screen.getByTestId("anonymous-session-gate"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /rules/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /settings/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /all runs/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /start or restore a session, then move into a protected interior shell/i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/real anonymous auth happens here\. rules depth still waits for phase 1\./i),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the updated phase 0 modal description", async () => {
+    const user = userEvent.setup();
+
+    render(<HomePage />);
+
+    await user.click(
+      screen.getByRole("button", { name: /open phase 0 notes/i }),
     );
-    expect(screen.getByRole("link", { name: /settings/i })).toHaveAttribute(
-      "href",
-      "/settings",
+
+    expect(
+      screen.getByText(
+        /home should already feel like a believable product surface, not a disconnected launch pad\./i,
+      ),
     );
   });
 
@@ -56,7 +91,9 @@ describe("HomePage", () => {
 
     const dialog = screen.getByRole("dialog", { name: /phase 0 slice/i });
     const title = screen.getByRole("heading", { name: /phase 0 slice/i });
-    const description = screen.getByText(/this screen should already feel intentional/i);
+    const description = screen.getByText(
+      /home should already feel like a believable product surface, not a disconnected launch pad\./i,
+    );
 
     expect(title.id).not.toBe("");
     expect(description.id).not.toBe("");

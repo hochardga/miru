@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Compass, Settings2 } from "lucide-react";
-import { Button, buttonVariants } from "@/components/ui/Button";
+import { AnonymousSessionGate } from "@/components/features/auth/AnonymousSessionGate";
 import { IconButton } from "@/components/ui/IconButton";
 import { Modal } from "@/components/ui/Modal";
 import { Panel } from "@/components/ui/Panel";
@@ -31,36 +30,22 @@ export default function HomePage() {
 
         <Panel className="space-y-4">
           <p className="max-w-xl text-base text-ink-muted">
-            A calm field-kit shell for starting, resuming, and protecting a run
-            before the deeper rules work begins.
+            Start or restore a session, then move into a protected interior shell
+            with honest empty, loading, and retry states.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Button>Start Run</Button>
-            <Link
-              href="/rules"
-              className={buttonVariants({ variant: "secondary" })}
-            >
-              Rules
-            </Link>
-            <Link
-              href="/settings"
-              className={buttonVariants({ variant: "secondary" })}
-            >
-              Settings
-            </Link>
-          </div>
+          <AnonymousSessionGate />
         </Panel>
 
         <div className="flex items-center gap-3 text-sm text-ink-muted">
           <Settings2 className="h-4 w-4" />
-          Protected routes and real session plumbing land in the next tasks.
+          Real anonymous auth happens here. Rules depth still waits for Phase 1.
         </div>
       </section>
 
       <Modal
         open={isModalOpen}
         title="Phase 0 slice"
-        description="This screen should already feel intentional: parchment surfaces, quiet hierarchy, and one honest route into the protected shell."
+        description="Home should already feel like a believable product surface, not a disconnected launch pad."
         onClose={() => setIsModalOpen(false)}
       />
     </main>
