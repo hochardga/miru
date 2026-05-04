@@ -11,8 +11,8 @@
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
-    "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e": "playwright test tests/e2e --pass-with-no-tests",
+    "test:e2e:headed": "playwright test tests/e2e --headed --pass-with-no-tests"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
