@@ -13,7 +13,6 @@ export default defineConfig({
   testDir: "./tests/e2e",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? localSmokeBaseUrl,
-    javaScriptEnabled: false,
     trace: "on-first-retry",
   },
   webServer: process.env.PLAYWRIGHT_BASE_URL
