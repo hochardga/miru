@@ -6,26 +6,6 @@ import { requireUser } from "@/lib/supabase/server";
 const PLAY_PLACEHOLDER_COPY =
   "Phase 0 holds this space open with a calm placeholder until the engine work arrives.";
 
-function getPromptPreview(pendingPrompt: unknown) {
-  if (typeof pendingPrompt === "string" && pendingPrompt.trim().length > 0) {
-    return pendingPrompt;
-  }
-
-  if (pendingPrompt && typeof pendingPrompt === "object") {
-    const promptRecord = pendingPrompt as Record<string, unknown>;
-
-    for (const key of ["prompt", "text", "body", "content", "message"]) {
-      const value = promptRecord[key];
-
-      if (typeof value === "string" && value.trim().length > 0) {
-        return value;
-      }
-    }
-  }
-
-  return PLAY_PLACEHOLDER_COPY;
-}
-
 function formatTileLabel(
   columnLetter: string | null | undefined,
   row: number | string,
@@ -67,7 +47,6 @@ export default async function PlayRunPage({
     >
       <Panel className="space-y-2">
         <h2 className="font-heading text-2xl">Current prompt</h2>
-        <p>{getPromptPreview(run.pending_prompt)}</p>
         <p className="text-sm text-ink-muted">{PLAY_PLACEHOLDER_COPY}</p>
       </Panel>
 
