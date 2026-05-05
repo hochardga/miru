@@ -6,11 +6,20 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().url(),
 });
 
+type PublicEnv = z.infer<typeof publicEnvSchema>;
 type PublicEnvInput =
-  | Partial<Record<keyof z.infer<typeof publicEnvSchema>, string | undefined>>
+  | Partial<Record<keyof PublicEnv, string | undefined>>
   | NodeJS.ProcessEnv;
 
-export function getPublicEnv(input: PublicEnvInput = process.env) {
+function getDefaultPublicEnvInput(): PublicEnvInput {
+  return {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  };
+}
+
+export function getPublicEnv(input: PublicEnvInput = getDefaultPublicEnvInput()) {
   const parsed = publicEnvSchema.safeParse(input);
 
   if (!parsed.success) {
