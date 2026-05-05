@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
-type ActionTarget = "start" | "rules" | "settings" | "runs";
+type ActionTarget = "start" | "rules" | "settings" | "runs" | "latestRun";
 type RestoreState = "idle" | "loading" | "failed";
 
 type RunsResponse = {
@@ -109,7 +109,11 @@ export function AnonymousSessionGate() {
     setPendingLabel(target);
 
     try {
-      if (target === "runs" && latestRunId) {
+      if (target === "latestRun") {
+        if (!latestRunId) {
+          return;
+        }
+
         const { data } = await supabase.auth.getSession();
 
         if (!data.session) {
@@ -175,16 +179,21 @@ export function AnonymousSessionGate() {
         >
           Settings
         </Button>
+        {latestRunId ? (
+          <Button
+            variant="secondary"
+            disabled={pendingLabel !== null}
+            onClick={() => void handleProtectedAction("latestRun")}
+          >
+            Continue Latest Run
+          </Button>
+        ) : null}
         <Button
           variant="secondary"
-          disabled={pendingLabel !== null || restoreState === "loading"}
+          disabled={pendingLabel !== null}
           onClick={() => void handleProtectedAction("runs")}
         >
-          {restoreState === "loading"
-            ? "Checking Latest Run..."
-            : latestRunId
-              ? "Continue Latest Run"
-              : "All Runs"}
+          All Runs
         </Button>
       </div>
 

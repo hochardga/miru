@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Compass, Settings2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { AnonymousSessionGate } from "@/components/features/auth/AnonymousSessionGate";
 import { IconButton } from "@/components/ui/IconButton";
 import { Modal } from "@/components/ui/Modal";
@@ -9,6 +10,8 @@ import { Panel } from "@/components/ui/Panel";
 
 export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const requiresSession = searchParams.get("reason") === "session-required";
 
   return (
     <main className="min-h-screen bg-field-background text-ink-text">
@@ -33,6 +36,12 @@ export default function HomePage() {
             Start or restore a session, then move into a protected interior shell
             with honest empty, loading, and retry states.
           </p>
+          {requiresSession ? (
+            <p className="max-w-xl text-sm text-ink-muted" role="status">
+              We couldn&apos;t find an active guest session for that page. Start
+              or restore a run here and we&apos;ll get you back inside.
+            </p>
+          ) : null}
           <AnonymousSessionGate />
         </Panel>
 

@@ -135,6 +135,45 @@ describe("AnonymousSessionGate", () => {
     });
   });
 
+  it("keeps the All Runs path available when a latest run can be resumed", async () => {
+    getSession.mockResolvedValue({
+      data: { session: { user: { id: "user-1" } } },
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: {
+          runs: [
+            {
+              id: "run-2",
+              title: "Open Thread",
+              status: "active",
+              current_day: 2,
+              updated_at: "2026-05-04T00:00:00.000Z",
+              last_journal_entry: null,
+            },
+          ],
+        },
+      }),
+    });
+
+    const user = userEvent.setup();
+
+    render(<AnonymousSessionGate />);
+
+    expect(
+      await screen.findByRole("button", { name: /continue latest run/i }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /all runs/i }));
+
+    await waitFor(() => {
+      expect(signInAnonymously).not.toHaveBeenCalled();
+      expect(push).toHaveBeenCalledWith("/runs");
+    });
+  });
+
   it("falls back to All Runs when the latest restored run is not active", async () => {
     getSession.mockResolvedValue({
       data: { session: { user: { id: "user-1" } } },

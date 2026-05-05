@@ -1,7 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import HomePage from "@/app/page";
+
+const { getSearchParam } = vi.hoisted(() => ({
+  getSearchParam: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => ({
+    get: getSearchParam,
+  }),
+}));
 
 vi.mock("@/components/features/auth/AnonymousSessionGate", () => ({
   AnonymousSessionGate: () => (
@@ -15,6 +25,10 @@ vi.mock("@/components/features/auth/AnonymousSessionGate", () => ({
 }));
 
 describe("HomePage", () => {
+  beforeEach(() => {
+    getSearchParam.mockImplementation(() => null);
+  });
+
   it("renders the Miru field-kit landing shell", () => {
     render(<HomePage />);
 
@@ -42,6 +56,20 @@ describe("HomePage", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(/real anonymous auth happens here\. rules depth still waits for phase 1\./i),
+    ).toBeInTheDocument();
+  });
+
+  it("explains when the user was sent home because a guest session is required", () => {
+    getSearchParam.mockImplementation((key: string) =>
+      key === "reason" ? "session-required" : null,
+    );
+
+    render(<HomePage />);
+
+    expect(
+      screen.getByText(
+        /we couldn't find an active guest session for that page\. start or restore a run here and we'll get you back inside\./i,
+      ),
     ).toBeInTheDocument();
   });
 
