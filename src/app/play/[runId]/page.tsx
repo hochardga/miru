@@ -3,6 +3,8 @@ import { Panel } from "@/components/ui/Panel";
 import { getRunShell } from "@/lib/runs/queries";
 import { requireUser } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 const PLAY_PLACEHOLDER_COPY =
   "Phase 0 holds this space open with a calm placeholder until the engine work arrives.";
 const INCOMPLETE_RUN_COPY =

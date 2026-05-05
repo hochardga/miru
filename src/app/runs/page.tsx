@@ -4,6 +4,8 @@ import { Panel } from "@/components/ui/Panel";
 import { listRuns } from "@/lib/runs/queries";
 import { requireUser } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
 function formatRunStatus(status: string) {
   return status
     .split("_")

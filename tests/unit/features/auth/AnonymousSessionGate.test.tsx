@@ -9,18 +9,16 @@ const { fetchMock, getSession, push, signInAnonymously } = vi.hoisted(() => ({
   push: vi.fn(),
   signInAnonymously: vi.fn(),
 }));
+const { mockCreateBrowserSupabaseClient } = vi.hoisted(() => ({
+  mockCreateBrowserSupabaseClient: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
 
 vi.mock("@/lib/supabase/browser", () => ({
-  createBrowserSupabaseClient: () => ({
-    auth: {
-      getSession,
-      signInAnonymously,
-    },
-  }),
+  createBrowserSupabaseClient: mockCreateBrowserSupabaseClient,
 }));
 
 describe("AnonymousSessionGate", () => {
@@ -29,11 +27,41 @@ describe("AnonymousSessionGate", () => {
     getSession.mockReset();
     push.mockReset();
     signInAnonymously.mockReset();
+    mockCreateBrowserSupabaseClient.mockReset();
+    mockCreateBrowserSupabaseClient.mockReturnValue({
+      auth: {
+        getSession,
+        signInAnonymously,
+      },
+    });
     vi.stubGlobal("fetch", fetchMock);
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("surfaces a config error instead of crashing when browser Supabase env is unavailable", async () => {
+    mockCreateBrowserSupabaseClient.mockImplementation(() => {
+      throw new Error(
+        "Missing or invalid public env: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY. Copy .env.example and provide hosted-dev values before using Supabase-backed flows.",
+      );
+    });
+
+    const user = userEvent.setup();
+
+    render(<AnonymousSessionGate />);
+
+    expect(screen.getByRole("button", { name: /start run/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /start run/i }));
+
+    expect(
+      await screen.findByText(
+        /missing or invalid public env: next_public_supabase_url, next_public_supabase_anon_key\./i,
+      ),
+    ).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("creates a session before starting a run", async () => {

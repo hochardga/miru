@@ -44,14 +44,35 @@ function getResumableLatestRunId(payload: RunsResponse) {
 
 export function AnonymousSessionGate() {
   const router = useRouter();
-  const supabase = createBrowserSupabaseClient();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [latestRunId, setLatestRunId] = useState<string | null>(null);
   const [pendingLabel, setPendingLabel] = useState<ActionTarget | null>(null);
   const [restoreState, setRestoreState] = useState<RestoreState>("idle");
   const hasHydratedLatestRunRef = useRef(false);
+  const supabaseRef = useRef<ReturnType<typeof createBrowserSupabaseClient> | null>(
+    null,
+  );
+
+  const getSupabaseClient = useCallback(() => {
+    if (supabaseRef.current) {
+      return supabaseRef.current;
+    }
+
+    supabaseRef.current = createBrowserSupabaseClient();
+    return supabaseRef.current;
+  }, []);
 
   const hydrateLatestRun = useCallback(async () => {
+    let supabase;
+
+    try {
+      supabase = getSupabaseClient();
+    } catch {
+      setLatestRunId(null);
+      setRestoreState("idle");
+      return;
+    }
+
     const { data } = await supabase.auth.getSession();
 
     if (!data.session) {
@@ -76,7 +97,7 @@ export function AnonymousSessionGate() {
       setLatestRunId(null);
       setRestoreState("failed");
     }
-  }, [supabase]);
+  }, [getSupabaseClient]);
 
   useEffect(() => {
     if (hasHydratedLatestRunRef.current) {
@@ -88,7 +109,9 @@ export function AnonymousSessionGate() {
     void hydrateLatestRun();
   }, [hydrateLatestRun]);
 
-  async function ensureSession() {
+  async function ensureSession(
+    supabase: ReturnType<typeof createBrowserSupabaseClient>,
+  ) {
     const { data } = await supabase.auth.getSession();
 
     if (data.session) {
@@ -109,6 +132,8 @@ export function AnonymousSessionGate() {
     setPendingLabel(target);
 
     try {
+      const supabase = getSupabaseClient();
+
       if (target === "latestRun") {
         if (!latestRunId) {
           return;
@@ -126,7 +151,7 @@ export function AnonymousSessionGate() {
         return;
       }
 
-      await ensureSession();
+      await ensureSession(supabase);
 
       if (target === "start") {
         const response = await fetch("/api/runs", {
