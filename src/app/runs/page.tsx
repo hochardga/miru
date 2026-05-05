@@ -4,6 +4,13 @@ import { Panel } from "@/components/ui/Panel";
 import { listRuns } from "@/lib/runs/queries";
 import { requireUser } from "@/lib/supabase/server";
 
+function formatRunStatus(status: string) {
+  return status
+    .split("_")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}
+
 export default async function RunsPage() {
   const { supabase, user } = await requireUser();
   const runs = await listRuns(supabase, user.id, 10);
@@ -24,12 +31,18 @@ export default async function RunsPage() {
             <p className="text-sm text-ink-muted">
               {run.last_journal_entry ?? "No journal entry yet."}
             </p>
-            <Link
-              className="font-medium text-signal-primary underline-offset-4 hover:underline"
-              href={`/play/${run.id}`}
-            >
-              Resume run
-            </Link>
+            {run.status === "active" ? (
+              <Link
+                className="font-medium text-signal-primary underline-offset-4 hover:underline"
+                href={`/play/${run.id}`}
+              >
+                Resume run
+              </Link>
+            ) : (
+              <p className="text-sm text-ink-muted">
+                Status: {formatRunStatus(run.status)}
+              </p>
+            )}
           </Panel>
         ))
       )}

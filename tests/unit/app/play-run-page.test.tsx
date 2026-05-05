@@ -21,6 +21,38 @@ describe("PlayRunPage", () => {
     vi.clearAllMocks();
   });
 
+  it("renders a distinct incomplete-shell state when the run exists but shell data is missing", async () => {
+    const incompleteShellError = new Error(
+      "The run is missing shell data needed for the play route.",
+    );
+
+    incompleteShellError.name = "RunShellIncompleteError";
+
+    mockRequireUser.mockResolvedValue({
+      supabase: {},
+      user: { id: "user-1" },
+    });
+    mockGetRunShell.mockRejectedValue(incompleteShellError);
+
+    render(
+      await PlayRunPage({
+        params: Promise.resolve({ runId: "run-1" }),
+      }),
+    );
+
+    expect(
+      screen.getByText(/run shell incomplete/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /this run exists, but its saved shell is incomplete for this session\./i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/that run could not be found for this session\./i),
+    ).not.toBeInTheDocument();
+  });
+
   it("keeps the current prompt panel on the placeholder copy only", async () => {
     mockRequireUser.mockResolvedValue({
       supabase: {},

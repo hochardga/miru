@@ -5,6 +5,8 @@ import { requireUser } from "@/lib/supabase/server";
 
 const PLAY_PLACEHOLDER_COPY =
   "Phase 0 holds this space open with a calm placeholder until the engine work arrives.";
+const INCOMPLETE_RUN_COPY =
+  "This run exists, but its saved shell is incomplete for this session. Return to your runs list or start a new run from home.";
 
 function formatTileLabel(
   columnLetter: string | null | undefined,
@@ -17,6 +19,10 @@ function formatTileLabel(
   return `${column}${rowLabel}`;
 }
 
+function isRunShellIncompleteError(error: unknown) {
+  return error instanceof Error && error.name === "RunShellIncompleteError";
+}
+
 export default async function PlayRunPage({
   params,
 }: {
@@ -24,7 +30,21 @@ export default async function PlayRunPage({
 }) {
   const { runId } = await params;
   const { supabase, user } = await requireUser();
-  const run = await getRunShell(supabase, user.id, runId);
+  let run;
+
+  try {
+    run = await getRunShell(supabase, user.id, runId);
+  } catch (error) {
+    if (isRunShellIncompleteError(error)) {
+      return (
+        <InteriorShell title="Play" context="Run shell incomplete">
+          <Panel>{INCOMPLETE_RUN_COPY}</Panel>
+        </InteriorShell>
+      );
+    }
+
+    throw error;
+  }
 
   if (!run) {
     return (

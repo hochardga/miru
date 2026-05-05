@@ -2,6 +2,13 @@ import type { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type RouteSupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
 
+export class RunShellIncompleteError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RunShellIncompleteError";
+  }
+}
+
 export async function listRuns(
   supabase: RouteSupabaseClient,
   userId: string,
@@ -42,7 +49,9 @@ export async function getRunShell(
   }
 
   if (!run.current_tile_id) {
-    return null;
+    throw new RunShellIncompleteError(
+      "The run is missing its current tile for the play shell.",
+    );
   }
 
   const { data: tile, error: tileError } = await supabase
@@ -57,7 +66,9 @@ export async function getRunShell(
   }
 
   if (!tile) {
-    return null;
+    throw new RunShellIncompleteError(
+      "The run tile could not be loaded for the play shell.",
+    );
   }
 
   const { data: mealBar, error: mealBarError } = await supabase
