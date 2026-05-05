@@ -1,6 +1,8 @@
 import type { createServerSupabaseClient } from "@/lib/supabase/server";
 
 type RouteSupabaseClient = Awaited<ReturnType<typeof createServerSupabaseClient>>;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class RunShellIncompleteError extends Error {
   constructor(message: string) {
@@ -34,6 +36,10 @@ export async function getRunShell(
   userId: string,
   runId: string,
 ) {
+  if (!UUID_PATTERN.test(runId)) {
+    return null;
+  }
+
   const { data: run, error: runError } = await supabase
     .from("runs")
     .select("id,title,status,current_day,hp,ep,current_tile_id,pending_prompt")

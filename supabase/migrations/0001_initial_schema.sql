@@ -133,6 +133,11 @@ security definer
 set search_path = public
 as $$
 begin
+  update runs
+  set current_tile_id = null
+  where id = old.run_id
+    and current_tile_id = old.id;
+
   update journal_entries
   set tile_id = null
   where run_id = old.run_id
