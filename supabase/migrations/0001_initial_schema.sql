@@ -129,6 +129,8 @@ create table action_log (
 create or replace function clear_run_tile_references()
 returns trigger
 language plpgsql
+security definer
+set search_path = public
 as $$
 begin
   update journal_entries

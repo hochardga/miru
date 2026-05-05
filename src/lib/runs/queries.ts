@@ -18,6 +18,7 @@ export async function listRuns(
     .from("runs")
     .select("id,title,status,current_day,updated_at,last_journal_entry")
     .eq("user_id", userId)
+    .order("status", { ascending: true })
     .order("updated_at", { ascending: false })
     .limit(limit);
 
