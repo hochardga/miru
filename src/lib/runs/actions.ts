@@ -3,6 +3,13 @@ import type { GameAction, GameActionResult, RunSnapshot } from "@/lib/game/types
 import type { RouteSupabaseClient } from "@/lib/runs/queries";
 import { getRunSnapshot as defaultGetRunSnapshot } from "@/lib/runs/snapshot";
 
+const STALE_RUN_ACTION_MESSAGE = "STALE_RUN_ACTION";
+
+type PersistRunActionRow = {
+  id: string;
+  created_at: string;
+};
+
 export class InvalidActionForStateError extends Error {
   validActions: RunSnapshot["legalActions"];
 
@@ -13,107 +20,116 @@ export class InvalidActionForStateError extends Error {
   }
 }
 
+export class StaleRunActionPersistenceError extends Error {
+  constructor() {
+    super(STALE_RUN_ACTION_MESSAGE);
+    this.name = "StaleRunActionPersistenceError";
+  }
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+
+  return null;
+}
+
+function isStaleRunActionPersistenceError(error: unknown) {
+  return error instanceof StaleRunActionPersistenceError || isStaleRunActionRpcError(error);
+}
+
+function isStaleRunActionRpcError(error: unknown) {
+  return errorMessage(error)?.includes(STALE_RUN_ACTION_MESSAGE) ?? false;
+}
+
+function serializeActionInput(action: GameAction) {
+  const input: Record<string, unknown> = { type: action.type };
+
+  if ("payload" in action && action.payload !== undefined) {
+    input.payload = action.payload;
+  }
+
+  return input;
+}
+
 export async function persistGameActionResult({
   supabase,
   userId,
   runId,
+  action,
+  expectedUpdatedAt,
   result,
 }: {
   supabase: RouteSupabaseClient;
   userId: string;
   runId: string;
+  action: GameAction;
+  expectedUpdatedAt: string;
   result: GameActionResult;
 }) {
   const { snapshot, summary } = result;
-  const updatedAt = new Date().toISOString();
-  const { error: runError } = await supabase
-    .from("runs")
-    .update({
-      current_day: snapshot.run.currentDay,
-      hp: snapshot.stats.hp,
-      ep: snapshot.stats.ep,
-      base_atk: snapshot.stats.baseAtk,
-      base_def: snapshot.stats.baseDef,
-      bitliths: snapshot.stats.bitliths,
-      starvation_count: snapshot.stats.starvationCount,
-      sleep_deprivation_count: snapshot.stats.sleepDeprivationCount,
-      minor_injury_count: snapshot.stats.minorInjuryCount,
-      active_enemy: snapshot.activeEnemy,
-      pending_prompt: snapshot.pendingPrompt,
-      updated_at: updatedAt,
-    })
-    .eq("id", runId)
-    .eq("user_id", userId);
+  const { data, error } = await supabase.rpc("persist_run_action_result", {
+    p_user_id: userId,
+    p_run_id: runId,
+    p_expected_updated_at: expectedUpdatedAt,
+    p_current_day: snapshot.run.currentDay,
+    p_hp: snapshot.stats.hp,
+    p_ep: snapshot.stats.ep,
+    p_base_atk: snapshot.stats.baseAtk,
+    p_base_def: snapshot.stats.baseDef,
+    p_bitliths: snapshot.stats.bitliths,
+    p_starvation_count: snapshot.stats.starvationCount,
+    p_sleep_deprivation_count: snapshot.stats.sleepDeprivationCount,
+    p_minor_injury_count: snapshot.stats.minorInjuryCount,
+    p_active_enemy: snapshot.activeEnemy,
+    p_pending_prompt: snapshot.pendingPrompt,
+    p_current_tile_id: snapshot.currentTile.id,
+    p_terrain: snapshot.currentTile.terrain,
+    p_visited: snapshot.currentTile.visited,
+    p_event_history: snapshot.currentTile.eventHistory,
+    p_repeatability_state: snapshot.currentTile.repeatabilityState,
+    p_enemy_state: snapshot.currentTile.enemyState,
+    p_notes: snapshot.currentTile.notes,
+    p_inventory: snapshot.inventory.map((item) => ({
+      item_key: item.key,
+      quantity: item.quantity,
+      metadata: item.metadata,
+    })),
+    p_action_input: serializeActionInput(action),
+    p_action_type: summary.type,
+    p_day_number: summary.dayNumber,
+    p_tile_id: summary.tileId,
+    p_action_result: { title: summary.title, body: summary.body },
+    p_dice_rolls: result.diceRolls,
+  });
 
-  if (runError) {
-    throw runError;
+  if (error) {
+    if (isStaleRunActionRpcError(error)) {
+      throw new StaleRunActionPersistenceError();
+    }
+
+    throw error;
   }
 
-  const { error: tileError } = await supabase
-    .from("run_tiles")
-    .update({
-      terrain: snapshot.currentTile.terrain,
-      visited: snapshot.currentTile.visited,
-      event_history: snapshot.currentTile.eventHistory,
-      repeatability_state: snapshot.currentTile.repeatabilityState,
-      enemy_state: snapshot.currentTile.enemyState,
-      notes: snapshot.currentTile.notes,
-      updated_at: updatedAt,
-    })
-    .eq("id", snapshot.currentTile.id)
-    .eq("run_id", runId)
-    .eq("user_id", userId);
+  const row = (Array.isArray(data) ? data[0] : data) as PersistRunActionRow | null;
 
-  if (tileError) {
-    throw tileError;
-  }
-
-  await Promise.all(
-    snapshot.inventory.map((item) =>
-      supabase
-        .from("run_inventory")
-        .update({
-          quantity: item.quantity,
-          metadata: item.metadata,
-          updated_at: updatedAt,
-        })
-        .eq("run_id", runId)
-        .eq("user_id", userId)
-        .eq("item_key", item.key)
-        .then(({ error }) => {
-          if (error) {
-            throw error;
-          }
-        }),
-    ),
-  );
-
-  const { data: action, error: actionError } = await supabase
-    .from("action_log")
-    .insert({
-      run_id: runId,
-      user_id: userId,
-      action_type: summary.type,
-      day_number: summary.dayNumber,
-      tile_id: summary.tileId,
-      input: {},
-      result: { title: summary.title, body: summary.body },
-      dice_rolls: result.diceRolls,
-    })
-    .select("id,created_at")
-    .single();
-
-  if (actionError) {
-    throw actionError;
-  }
-
-  if (!action) {
-    throw new Error("Action log insert did not return a row.");
+  if (!row?.id || !row.created_at) {
+    throw new Error("persist_run_action_result returned an incomplete row.");
   }
 
   return {
-    id: action.id as string,
-    createdAt: action.created_at as string,
+    id: row.id,
+    createdAt: row.created_at,
   };
 }
 
@@ -150,7 +166,26 @@ export async function applyRunAction({
     throw error;
   }
 
-  const actionRow = await persist({ supabase, userId, runId, result });
+  let actionRow: Awaited<ReturnType<typeof persistGameActionResult>>;
+
+  try {
+    actionRow = await persist({
+      supabase,
+      userId,
+      runId,
+      action,
+      expectedUpdatedAt: snapshot.run.updatedAt,
+      result,
+    });
+  } catch (error) {
+    if (isStaleRunActionPersistenceError(error)) {
+      const latestSnapshot = await getRunSnapshot(supabase, userId, runId).catch(() => null);
+      throw new InvalidActionForStateError(latestSnapshot?.legalActions ?? snapshot.legalActions);
+    }
+
+    throw error;
+  }
+
   const updatedSnapshot = await getRunSnapshot(supabase, userId, runId);
 
   if (!updatedSnapshot) {

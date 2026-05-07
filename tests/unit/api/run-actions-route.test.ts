@@ -72,4 +72,73 @@ describe("/api/runs/[runId]/actions", () => {
       },
     });
   });
+
+  it("returns 400 when the action payload is invalid", async () => {
+    mockGetRouteUser.mockResolvedValue({ supabase: {}, user: { id: "user-1" } });
+
+    const { POST } = await import("@/app/api/runs/[runId]/actions/route");
+    const response = await POST(
+      new Request("http://localhost/api/runs/run-1/actions", {
+        method: "POST",
+        body: JSON.stringify({ type: "camp" }),
+      }),
+      { params: Promise.resolve({ runId: "run-1" }) },
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "BAD_REQUEST",
+        message: "Invalid run action payload.",
+      },
+    });
+    expect(mockApplyRunAction).not.toHaveBeenCalled();
+  });
+
+  it("returns 401 when no user session exists", async () => {
+    mockGetRouteUser.mockResolvedValue({ supabase: {}, user: null });
+
+    const { POST } = await import("@/app/api/runs/[runId]/actions/route");
+    const response = await POST(
+      new Request("http://localhost/api/runs/run-1/actions", {
+        method: "POST",
+        body: JSON.stringify({ type: "next_day" }),
+      }),
+      { params: Promise.resolve({ runId: "run-1" }) },
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "UNAUTHORIZED",
+        message: "Start from the home screen to create or restore your Miru session.",
+      },
+    });
+    expect(mockApplyRunAction).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 when the run is not found for the owner", async () => {
+    mockGetRouteUser.mockResolvedValue({ supabase: {}, user: { id: "user-1" } });
+    mockApplyRunAction.mockResolvedValue(null);
+
+    const { POST } = await import("@/app/api/runs/[runId]/actions/route");
+    const response = await POST(
+      new Request("http://localhost/api/runs/run-1/actions", {
+        method: "POST",
+        body: JSON.stringify({ type: "next_day" }),
+      }),
+      { params: Promise.resolve({ runId: "run-1" }) },
+    );
+
+    expect(response.status).toBe(404);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "RUN_NOT_FOUND",
+        message: "That run could not be found for this session.",
+      },
+    });
+  });
 });
