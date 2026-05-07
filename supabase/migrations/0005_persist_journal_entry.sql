@@ -39,8 +39,8 @@ begin
   select *
   into v_run
   from runs
-  where id = p_run_id
-    and user_id = p_user_id
+  where runs.id = p_run_id
+    and runs.user_id = p_user_id
   for update;
 
   if not found then
@@ -79,9 +79,9 @@ begin
   select run_tiles.id
   into v_tile_exists
   from run_tiles
-  where id = v_tile_id
-    and run_id = p_run_id
-    and user_id = p_user_id;
+  where run_tiles.id = v_tile_id
+    and run_tiles.run_id = p_run_id
+    and run_tiles.user_id = p_user_id;
 
   if not found then
     raise exception 'RUN_TILE_NOT_FOUND'
@@ -132,8 +132,8 @@ begin
         'body', 'Your notes are saved. You can begin the next day.'
       ),
       updated_at = v_updated_at
-  where id = p_run_id
-    and user_id = p_user_id;
+  where runs.id = p_run_id
+    and runs.user_id = p_user_id;
 
   id := v_journal_id;
   run_id := v_journal_run_id;

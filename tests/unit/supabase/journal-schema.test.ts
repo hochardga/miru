@@ -41,9 +41,23 @@ describe("0005_persist_journal_entry migration", () => {
       /if auth\.uid\(\) is null or auth\.uid\(\) <> p_user_id then/i,
     );
     expect(migration).toMatch(
-      /select \*[\s\S]+from runs[\s\S]+where id = p_run_id[\s\S]+and user_id = p_user_id[\s\S]+for update;/i,
+      /select \*[\s\S]+from runs[\s\S]+where runs\.id = p_run_id[\s\S]+and runs\.user_id = p_user_id[\s\S]+for update;/i,
     );
     expect(migration).toMatch(/raise exception 'RUN_NOT_FOUND'/i);
+  });
+
+  it("qualifies table predicates that would conflict with output parameters", () => {
+    const migration = fs.readFileSync(rpcMigrationPath, "utf8");
+
+    expect(migration).toMatch(
+      /from runs\s+where runs\.id = p_run_id\s+and runs\.user_id = p_user_id\s+for update;/i,
+    );
+    expect(migration).toMatch(
+      /from run_tiles\s+where run_tiles\.id = v_tile_id\s+and run_tiles\.run_id = p_run_id\s+and run_tiles\.user_id = p_user_id;/i,
+    );
+    expect(migration).toMatch(
+      /update runs[\s\S]+where runs\.id = p_run_id\s+and runs\.user_id = p_user_id;/i,
+    );
   });
 
   it("gates writes to the active journal prompt day and tile", () => {
@@ -57,7 +71,7 @@ describe("0005_persist_journal_entry migration", () => {
     expect(migration).toMatch(/v_prompt_day is distinct from p_day_number/i);
     expect(migration).toMatch(/v_prompt_tile_id := \(v_run\.pending_prompt->>'tileId'\)::uuid/i);
     expect(migration).toMatch(/v_tile_id is distinct from v_prompt_tile_id/i);
-    expect(migration).toMatch(/from run_tiles[\s\S]+where id = v_tile_id[\s\S]+and run_id = p_run_id[\s\S]+and user_id = p_user_id/i);
+    expect(migration).toMatch(/from run_tiles[\s\S]+where run_tiles\.id = v_tile_id[\s\S]+and run_tiles\.run_id = p_run_id[\s\S]+and run_tiles\.user_id = p_user_id/i);
     expect(migration).toMatch(/raise exception 'RUN_TILE_NOT_FOUND'/i);
   });
 
