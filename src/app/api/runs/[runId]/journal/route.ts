@@ -1,16 +1,9 @@
 import { NextResponse } from "next/server";
-import type { RunPrompt } from "@/lib/game/types";
+import { UUID_PATTERN } from "@/lib/runs/queries";
 import { getRouteUser } from "@/lib/supabase/server";
 import { journalRequestSchema } from "@/lib/validation/schemas";
 
 const INVALID_JSON = Symbol("invalid-json");
-
-type RunRow = {
-  id: string;
-  current_day: number;
-  current_tile_id: string | null;
-  pending_prompt: RunPrompt | null;
-};
 
 type JournalEntryRow = {
   id: string;
@@ -73,6 +66,19 @@ function tileNotFound() {
   );
 }
 
+function invalidJournalState() {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: {
+        code: "INVALID_JOURNAL_STATE",
+        message: "That journal prompt is no longer active for this run.",
+      },
+    },
+    { status: 409 },
+  );
+}
+
 async function readJsonBody(request: Request) {
   const rawBody = await request.text();
 
@@ -87,11 +93,49 @@ async function readJsonBody(request: Request) {
   }
 }
 
-function dayCompletePrompt(): RunPrompt {
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return error.message;
+  }
+
+  return "";
+}
+
+function mapJournalError(error: unknown) {
+  const message = errorMessage(error);
+
+  if (message.includes("RUN_NOT_FOUND")) {
+    return notFound();
+  }
+
+  if (message.includes("RUN_TILE_NOT_FOUND")) {
+    return tileNotFound();
+  }
+
+  if (message.includes("INVALID_JOURNAL_STATE")) {
+    return invalidJournalState();
+  }
+
+  return null;
+}
+
+function mapJournalEntry(row: JournalEntryRow) {
   return {
-    type: "day_complete",
-    title: "Day recorded",
-    body: "Your notes are saved. You can begin the next day.",
+    id: row.id,
+    runId: row.run_id,
+    dayNumber: row.day_number,
+    tileId: row.tile_id,
+    body: row.body,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -118,92 +162,39 @@ export async function POST(
   }
 
   const { runId } = await params;
-  const { data: run, error: runError } = await supabase
-    .from("runs")
-    .select("id,current_day,current_tile_id,pending_prompt")
-    .eq("id", runId)
-    .eq("user_id", user.id)
-    .maybeSingle();
 
-  if (runError) {
-    throw runError;
-  }
-
-  if (!run) {
+  if (!UUID_PATTERN.test(runId)) {
     return notFound();
   }
 
-  const runRow = run as RunRow;
-  let tileId = parsed.data.tileId ?? runRow.current_tile_id;
+  const { data, error } = await supabase.rpc("persist_journal_entry", {
+    p_user_id: user.id,
+    p_run_id: runId,
+    p_day_number: parsed.data.dayNumber,
+    p_tile_id: parsed.data.tileId ?? null,
+    p_body: parsed.data.body,
+  });
 
-  if (parsed.data.tileId) {
-    const { data: tile, error: tileError } = await supabase
-      .from("run_tiles")
-      .select("id")
-      .eq("id", parsed.data.tileId)
-      .eq("run_id", runRow.id)
-      .eq("user_id", user.id)
-      .maybeSingle();
+  if (error) {
+    const mappedError = mapJournalError(error);
 
-    if (tileError) {
-      throw tileError;
+    if (mappedError) {
+      return mappedError;
     }
 
-    if (!tile) {
-      return tileNotFound();
-    }
-
-    tileId = parsed.data.tileId;
+    throw error;
   }
 
-  const timestamp = new Date().toISOString();
-  const { data: journalEntry, error: journalError } = await supabase
-    .from("journal_entries")
-    .upsert(
-      {
-        run_id: runRow.id,
-        user_id: user.id,
-        day_number: parsed.data.dayNumber,
-        tile_id: tileId,
-        body: parsed.data.body,
-        updated_at: timestamp,
-      },
-      { onConflict: "run_id,day_number" },
-    )
-    .select("id,run_id,day_number,tile_id,body,updated_at")
-    .single();
+  const row = (Array.isArray(data) ? data[0] : data) as JournalEntryRow | null;
 
-  if (journalError) {
-    throw journalError;
+  if (!row?.id || !row.updated_at) {
+    throw new Error("persist_journal_entry returned an incomplete row.");
   }
-
-  const { error: runUpdateError } = await supabase
-    .from("runs")
-    .update({
-      last_journal_entry: parsed.data.body,
-      pending_prompt: dayCompletePrompt(),
-      updated_at: timestamp,
-    })
-    .eq("id", runRow.id)
-    .eq("user_id", user.id);
-
-  if (runUpdateError) {
-    throw runUpdateError;
-  }
-
-  const row = journalEntry as JournalEntryRow;
 
   return NextResponse.json(
     {
       ok: true,
-      data: {
-        id: row.id,
-        runId: row.run_id,
-        dayNumber: row.day_number,
-        tileId: row.tile_id,
-        body: row.body,
-        updatedAt: row.updated_at,
-      },
+      data: mapJournalEntry(row),
     },
     { status: 201 },
   );
