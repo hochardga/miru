@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PlayTable } from "@/components/features/play/PlayTable";
-import type { RunSnapshot } from "@/lib/game/types";
+import type { RunSnapshot, RunTile } from "@/lib/game/types";
 
 const baseSnapshot: RunSnapshot = {
   run: {
@@ -95,8 +95,97 @@ describe("PlayTable", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/choose how to spend the evening/i)).toBeInTheDocument();
     expect(screen.getByText(/day 2/i)).toBeInTheDocument();
-    expect(screen.getByText(/b03/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/b03/i).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /camp/i })).toBeInTheDocument();
+  });
+
+  it("renders character, inventory, map, and tile inspection surfaces", async () => {
+    const user = userEvent.setup();
+    const longInventoryName =
+      "Emergency Cartographer's Waterproof Archive Case With Reinforced Brass Corners";
+    const visibleTile: RunTile = {
+      id: "33333333-3333-4333-8333-333333333333",
+      coordinate: "E01",
+      row: 1,
+      column: "E",
+      terrain: "mountains",
+      visited: false,
+      icons: ["enemy", "quest"],
+      eventHistory: ["signal-flare"],
+      repeatabilityState: {},
+      enemyState: {
+        key: "ridge-stalker",
+        name: "Ridge Stalker",
+        hp: 6,
+        atk: 3,
+        def: 1,
+        rewardKey: "bitlith-cache",
+      },
+      notes: "A bright trail marker cuts across the ridge.",
+    };
+
+    render(
+      <PlayTable
+        initialSnapshot={snapshot({
+          stats: {
+            hp: 7,
+            ep: 5,
+            baseAtk: 3,
+            baseDef: 2,
+            bitliths: 9,
+            starvationCount: 1,
+            sleepDeprivationCount: 2,
+            minorInjuryCount: 1,
+          },
+          visibleTiles: [visibleTile],
+          inventory: [
+            {
+              key: "archive-case",
+              name: longInventoryName,
+              category: "equipment",
+              quantity: 2,
+              metadata: {},
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("ATK")).toBeInTheDocument();
+    expect(screen.getByText("DEF")).toBeInTheDocument();
+    expect(screen.getByText("Bitliths")).toBeInTheDocument();
+    expect(screen.getByText("Starvation")).toBeInTheDocument();
+    expect(screen.getByText("Sleep")).toBeInTheDocument();
+    expect(screen.getByText("Injury")).toBeInTheDocument();
+
+    const itemName = screen.getByText(longInventoryName);
+    expect(itemName).toBeVisible();
+    expect(itemName).toHaveClass("break-words");
+    expect(screen.getByText("Equipment")).toBeInTheDocument();
+    expect(screen.getByText("x2")).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", { name: /inspect tile b03/i }),
+    ).toBeInTheDocument();
+    const visibleTileButton = screen.getByRole("button", {
+      name: /inspect tile e01/i,
+    });
+    expect(visibleTileButton).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("heading", { name: /b03/i }),
+    ).toBeInTheDocument();
+
+    await user.click(visibleTileButton);
+
+    expect(screen.getByRole("heading", { name: /e01/i })).toBeInTheDocument();
+    expect(screen.getByText(/mountains/i)).toBeInTheDocument();
+    expect(screen.getByText(/not visited/i)).toBeInTheDocument();
+    expect(screen.getByText(/enemy, quest/i)).toBeInTheDocument();
+    expect(screen.getByText(/ridge stalker/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/a bright trail marker cuts across the ridge/i),
+    ).toBeInTheDocument();
   });
 
   it("disables non-journal actions while saving, posts to actions, and renders returned action and dice", async () => {

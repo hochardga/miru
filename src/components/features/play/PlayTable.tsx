@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { AlertCircle } from "lucide-react";
+import { CharacterPanel } from "@/components/features/character/CharacterPanel";
+import { InventoryPanel } from "@/components/features/inventory/InventoryPanel";
+import { HexMap } from "@/components/features/map/HexMap";
 import { ActionBar } from "@/components/features/play/ActionBar";
 import { CurrentPrompt } from "@/components/features/play/CurrentPrompt";
 import { DiceResult } from "@/components/ui/DiceResult";
@@ -47,6 +50,26 @@ type SnapshotResponse = {
 
 const FALLBACK_ERROR = "The table could not save that move.";
 const REFRESH_ERROR = "The table could not refresh the latest run state.";
+
+function formatRunStatus(status: string) {
+  return status
+    .split("_")
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+}
+
+function formatUpdatedDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown";
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
 
 async function parseJsonResponse<T>(response: Response): Promise<T | null> {
   try {
@@ -221,9 +244,20 @@ export function PlayTable({ initialSnapshot }: PlayTableProps) {
       <Panel className="grid gap-3 sm:grid-cols-4">
         <StatusValue label="Tile" value={snapshot.currentTile.coordinate} />
         <StatusValue label="Day" value={`Day ${snapshot.run.currentDay}`} />
-        <StatusValue label="HP" value={String(snapshot.stats.hp)} />
-        <StatusValue label="EP" value={String(snapshot.stats.ep)} />
+        <StatusValue label="Status" value={formatRunStatus(snapshot.run.status)} />
+        <StatusValue label="Updated" value={formatUpdatedDate(snapshot.run.updatedAt)} />
       </Panel>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.8fr)]">
+        <CharacterPanel stats={snapshot.stats} />
+        <InventoryPanel items={snapshot.inventory} />
+      </div>
+
+      <HexMap
+        activeEnemy={snapshot.activeEnemy}
+        currentTile={snapshot.currentTile}
+        visibleTiles={snapshot.visibleTiles}
+      />
 
       {recentAction || recentDiceRolls.length > 0 ? (
         <Panel className="grid gap-3">
@@ -234,7 +268,7 @@ export function PlayTable({ initialSnapshot }: PlayTableProps) {
               </p>
               <h3 className="font-heading text-xl">{recentAction.title}</h3>
               {recentAction.body ? (
-                <p className="text-sm leading-6 text-ink-muted">
+                <p className="break-words text-sm leading-6 text-ink-muted">
                   {recentAction.body}
                 </p>
               ) : null}
@@ -249,9 +283,9 @@ export function PlayTable({ initialSnapshot }: PlayTableProps) {
 
 function StatusValue({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-h-16 border-l border-ink-border px-3 py-2">
+    <div className="min-h-16 min-w-0 border-l border-ink-border px-3 py-2">
       <p className="font-mono text-xs uppercase text-ink-muted">{label}</p>
-      <p className="mt-1 truncate text-xl font-semibold">{value}</p>
+      <p className="mt-1 break-words text-xl font-semibold leading-tight">{value}</p>
     </div>
   );
 }
