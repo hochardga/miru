@@ -4,6 +4,7 @@ type ResolveCampInput = {
   stats: RunStats;
   inventory: InventoryItem[];
   foodChoice: "eat_meal_bar" | "skip_food";
+  sleepChoice?: "sleep" | "skip_sleep";
 };
 
 type ResolveCampResult = {
@@ -20,6 +21,7 @@ export function resolveCamp(input: ResolveCampInput): ResolveCampResult {
   const inventory = input.inventory.map((item) => ({ ...item }));
   const mealBar = inventory.find((item) => item.key === "meal-bar");
   const ateFood = input.foodChoice === "eat_meal_bar" && mealBar && mealBar.quantity > 0;
+  const slept = input.sleepChoice !== "skip_sleep";
 
   if (ateFood) {
     mealBar.quantity -= 1;
@@ -30,7 +32,7 @@ export function resolveCamp(input: ResolveCampInput): ResolveCampResult {
     hp: clampStat(input.stats.hp + 2),
     ep: clampStat(input.stats.ep + 2),
     starvationCount: ateFood ? 0 : input.stats.starvationCount + 1,
-    sleepDeprivationCount: 0,
+    sleepDeprivationCount: slept ? 0 : input.stats.sleepDeprivationCount + 1,
   };
 
   return {

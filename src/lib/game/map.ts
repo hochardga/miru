@@ -46,8 +46,8 @@ export function moveCoordinate(coordinate: Coordinate, direction: MoveDirection)
   const offsets: Record<MoveDirection, [number, number]> = {
     W: [-1, 0],
     E: [1, 0],
-    NW: [isEvenRow ? 0 : -1, -1],
-    NE: [isEvenRow ? 1 : 0, -1],
+    NW: [isEvenRow ? -1 : 0, -1],
+    NE: [isEvenRow ? 0 : 1, -1],
     SW: [isEvenRow ? -1 : 0, 1],
     SE: [isEvenRow ? 0 : 1, 1],
   };

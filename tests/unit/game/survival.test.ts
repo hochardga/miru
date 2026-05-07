@@ -44,4 +44,41 @@ describe("resolveCamp", () => {
     expect(result.stats.starvationCount).toBe(1);
     expect(result.summary).toContain("went without food");
   });
+
+  it("tracks sleep deprivation when sleep is skipped", () => {
+    const result = resolveCamp({
+      stats,
+      inventory: [],
+      foodChoice: "skip_food",
+      sleepChoice: "skip_sleep",
+    });
+
+    expect(result.stats.sleepDeprivationCount).toBe(1);
+  });
+
+  it("resets sleep deprivation when sleep is taken", () => {
+    const result = resolveCamp({
+      stats: { ...stats, sleepDeprivationCount: 2 },
+      inventory: [],
+      foodChoice: "skip_food",
+      sleepChoice: "sleep",
+    });
+
+    expect(result.stats.sleepDeprivationCount).toBe(0);
+  });
+
+  it("does not mutate input inventory when a Meal Bar is consumed", () => {
+    const inventory: InventoryItem[] = [
+      { key: "meal-bar", name: "Meal Bar", category: "food", quantity: 3, metadata: {} },
+    ];
+
+    const result = resolveCamp({
+      stats,
+      inventory,
+      foodChoice: "eat_meal_bar",
+    });
+
+    expect(result.inventory[0]?.quantity).toBe(2);
+    expect(inventory[0]?.quantity).toBe(3);
+  });
 });
