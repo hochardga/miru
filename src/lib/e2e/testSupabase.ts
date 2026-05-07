@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { MIRU1V2E_MANIFEST } from "@/data/miru1v2e/manifest";
 import type {
@@ -126,7 +127,13 @@ type RpcResponse = {
   error: Error | null;
 };
 
-const STORE_PATH = join(process.cwd(), ".next", "e2e-test-store.json");
+export function getE2EStorePath() {
+  if (process.env.NEXT_PUBLIC_MIRU_DEMO_BACKEND === "true") {
+    return join(tmpdir(), "miru-demo-store.json");
+  }
+
+  return join(process.cwd(), ".next", "e2e-test-store.json");
+}
 
 function emptyStore(): E2EStore {
   return {
@@ -145,20 +152,24 @@ function clone<T>(value: T): T {
 }
 
 function loadStore(): E2EStore {
-  if (!existsSync(STORE_PATH)) {
+  const storePath = getE2EStorePath();
+
+  if (!existsSync(storePath)) {
     return emptyStore();
   }
 
   try {
-    return { ...emptyStore(), ...JSON.parse(readFileSync(STORE_PATH, "utf8")) };
+    return { ...emptyStore(), ...JSON.parse(readFileSync(storePath, "utf8")) };
   } catch {
     return emptyStore();
   }
 }
 
 function saveStore(store: E2EStore) {
-  mkdirSync(dirname(STORE_PATH), { recursive: true });
-  writeFileSync(STORE_PATH, JSON.stringify(store), "utf8");
+  const storePath = getE2EStorePath();
+
+  mkdirSync(dirname(storePath), { recursive: true });
+  writeFileSync(storePath, JSON.stringify(store), "utf8");
 }
 
 function nextTimestamp(store: E2EStore) {

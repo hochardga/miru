@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { getPublicEnv } from "@/lib/env";
+import { getPublicEnv, resolvePublicAppUrl } from "@/lib/env";
 
 const originalPublicEnv = {
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -50,8 +50,41 @@ describe("getPublicEnv", () => {
 
   it("throws a clear developer error when required values are missing", () => {
     expect(() => getPublicEnv({})).toThrowError(
-      /NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_APP_URL/,
+      /NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY/,
     );
+  });
+
+  it("derives a localhost app URL when no explicit app URL is provided", () => {
+    expect(
+      getPublicEnv({
+        NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key",
+      }),
+    ).toEqual({
+      NEXT_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key",
+      NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+    });
+  });
+
+  it("derives a Vercel preview branch URL when available", () => {
+    expect(
+      resolvePublicAppUrl({
+        NEXT_PUBLIC_VERCEL_ENV: "preview",
+        NEXT_PUBLIC_VERCEL_BRANCH_URL: "miru-preview.vercel.app",
+        NEXT_PUBLIC_VERCEL_URL: "miru-deploy.vercel.app",
+      }),
+    ).toBe("https://miru-preview.vercel.app");
+  });
+
+  it("derives a Vercel production URL when available", () => {
+    expect(
+      resolvePublicAppUrl({
+        NEXT_PUBLIC_VERCEL_ENV: "production",
+        NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL: "miru.vercel.app",
+        NEXT_PUBLIC_VERCEL_BRANCH_URL: "miru-preview.vercel.app",
+      }),
+    ).toBe("https://miru.vercel.app");
   });
 
   it("reads the required public env keys from process.env by default", () => {

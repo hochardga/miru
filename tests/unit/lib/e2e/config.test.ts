@@ -29,4 +29,11 @@ describe("isE2ETestBackendEnabled", () => {
 
     expect(isE2ETestBackendEnabled()).toBe(false);
   });
+
+  it("enables the backend in production when preview demo mode is explicit", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_MIRU_DEMO_BACKEND", "true");
+
+    expect(isE2ETestBackendEnabled()).toBe(true);
+  });
 });
