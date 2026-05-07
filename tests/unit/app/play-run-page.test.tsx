@@ -1,13 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { RunSnapshot } from "@/lib/game/types";
 
-const { mockGetRunShell, mockRequireUser } = vi.hoisted(() => ({
-  mockGetRunShell: vi.fn(),
+const { mockGetRunSnapshot, mockRequireUser } = vi.hoisted(() => ({
+  mockGetRunSnapshot: vi.fn(),
   mockRequireUser: vi.fn(),
 }));
 
-vi.mock("@/lib/runs/queries", () => ({
-  getRunShell: mockGetRunShell,
+vi.mock("@/lib/runs/snapshot", () => ({
+  getRunSnapshot: mockGetRunSnapshot,
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -16,62 +17,121 @@ vi.mock("@/lib/supabase/server", () => ({
 
 import PlayRunPage from "@/app/play/[runId]/page";
 
+const snapshot: RunSnapshot = {
+  run: {
+    id: "11111111-1111-4111-8111-111111111111",
+    title: "Field Notes",
+    status: "active",
+    rulesVersion: "miru1v2e",
+    currentDay: 2,
+    updatedAt: "2026-05-07T12:00:00.000Z",
+  },
+  stats: {
+    hp: 10,
+    ep: 8,
+    baseAtk: 2,
+    baseDef: 1,
+    bitliths: 4,
+    starvationCount: 0,
+    sleepDeprivationCount: 0,
+    minorInjuryCount: 0,
+  },
+  currentTile: {
+    id: "22222222-2222-4222-8222-222222222222",
+    coordinate: "B03",
+    row: 3,
+    column: "B",
+    terrain: "forest",
+    visited: true,
+    icons: ["village"],
+    eventHistory: [],
+    repeatabilityState: {},
+    enemyState: null,
+    notes: null,
+  },
+  visibleTiles: [],
+  inventory: [],
+  techSkills: [],
+  activeEnemy: null,
+  pendingPrompt: {
+    type: "camp_required",
+    title: "Camp before nightfall",
+    body: "Choose how to spend the evening.",
+    choices: [{ key: "eat_meal_bar", label: "Eat Meal Bar" }],
+  },
+  legalActions: [
+    {
+      type: "camp",
+      label: "Camp",
+      payload: { foodChoice: "eat_meal_bar" },
+    },
+  ],
+  recentActions: [],
+  latestJournalEntry: null,
+};
+
 describe("PlayRunPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("renders a distinct incomplete-shell state when the run exists but shell data is missing", async () => {
-    const incompleteShellError = new Error(
-      "The run is missing shell data needed for the play route.",
-    );
-
-    incompleteShellError.name = "RunShellIncompleteError";
-
+  it("renders the real play prompt from the run snapshot", async () => {
     mockRequireUser.mockResolvedValue({
       supabase: {},
       user: { id: "user-1" },
     });
-    mockGetRunShell.mockRejectedValue(incompleteShellError);
+    mockGetRunSnapshot.mockResolvedValue(snapshot);
 
     render(
       await PlayRunPage({
-        params: Promise.resolve({ runId: "run-1" }),
+        params: Promise.resolve({ runId: snapshot.run.id }),
       }),
     );
 
+    expect(mockGetRunSnapshot).toHaveBeenCalledWith(
+      {},
+      "user-1",
+      snapshot.run.id,
+    );
+    expect(screen.getAllByText(/day 2/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/b03/i).length).toBeGreaterThan(0);
     expect(
-      screen.getByText(/run shell incomplete/i),
+      screen.getByRole("heading", { name: /camp before nightfall/i }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /this run exists, but its saved shell is incomplete for this session\./i,
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText(/that run could not be found for this session\./i),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /camp/i })).toBeInTheDocument();
   });
 
-  it("keeps the current prompt panel on the placeholder copy only", async () => {
+  it("preserves the missing run state", async () => {
     mockRequireUser.mockResolvedValue({
       supabase: {},
       user: { id: "user-1" },
     });
-    mockGetRunShell.mockResolvedValue({
-      title: "Field Notes",
-      current_day: 2,
-      tile: {
-        column_letter: "B",
-        row_number: 3,
-      },
-      hp: 10,
-      ep: 8,
-      mealBars: 4,
-      pending_prompt: {
-        prompt: "Hidden prompt text",
-      },
+    mockGetRunSnapshot.mockResolvedValue(null);
+
+    render(
+      await PlayRunPage({
+        params: Promise.resolve({ runId: "missing-run" }),
+      }),
+    );
+
+    expect(screen.getByText(/run unavailable/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/that run could not be found for this session/i),
+    ).toBeInTheDocument();
+  });
+
+  it("preserves the incomplete snapshot state", async () => {
+    const incompleteSnapshotError = new Error(
+      "Current tile could not be loaded.",
+    );
+
+    incompleteSnapshotError.name = "RunSnapshotIncompleteError";
+
+    mockRequireUser.mockResolvedValue({
+      supabase: {},
+      user: { id: "user-1" },
     });
+    mockGetRunSnapshot.mockRejectedValue(incompleteSnapshotError);
 
     render(
       await PlayRunPage({
@@ -79,14 +139,9 @@ describe("PlayRunPage", () => {
       }),
     );
 
+    expect(screen.getByText(/run snapshot incomplete/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /current prompt/i }),
+      screen.getByText(/this run exists, but its saved snapshot is incomplete/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        /phase 0 holds this space open with a calm placeholder until the engine work arrives\./i,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/hidden prompt text/i)).not.toBeInTheDocument();
   });
 });
