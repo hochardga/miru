@@ -16,8 +16,10 @@ export function isProtectedPath(pathname: string) {
 }
 
 export async function updateSession(request: NextRequest) {
+  const protectedPath = isProtectedPath(request.nextUrl.pathname);
+
   if (isE2ETestBackendEnabled()) {
-    if (!isProtectedPath(request.nextUrl.pathname)) {
+    if (!protectedPath) {
       return NextResponse.next();
     }
 
@@ -31,9 +33,13 @@ export async function updateSession(request: NextRequest) {
 
   if (
     process.env.E2E_DISABLE_REMOTE_AUTH === "true" &&
-    isProtectedPath(request.nextUrl.pathname)
+    protectedPath
   ) {
     return NextResponse.redirect(new URL("/?reason=session-required", request.url));
+  }
+
+  if (!protectedPath) {
+    return NextResponse.next();
   }
 
   const env = getPublicEnv();
@@ -66,7 +72,7 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && isProtectedPath(request.nextUrl.pathname)) {
+  if (!user) {
     return NextResponse.redirect(new URL("/?reason=session-required", request.url));
   }
 
