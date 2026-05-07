@@ -22,8 +22,7 @@ type ActionResponse = {
   ok: boolean;
   data?: {
     snapshot: RunSnapshot;
-    summary?: Omit<ActionSummary, "id" | "createdAt">;
-    diceRolls?: DiceRoll[];
+    action: ActionSummary;
   };
   error?: {
     message?: string;
@@ -38,23 +37,16 @@ type JournalResponse = {
   };
 };
 
-const FALLBACK_ERROR = "The table could not save that move.";
-
-function dayCompleteSnapshot(
-  snapshot: RunSnapshot,
-  journalEntry: JournalEntry,
-): RunSnapshot {
-  return {
-    ...snapshot,
-    pendingPrompt: {
-      type: "day_complete",
-      title: "Journal saved",
-      body: "Day complete.",
-    },
-    legalActions: [{ type: "next_day", label: "Next Day" }],
-    latestJournalEntry: journalEntry,
+type SnapshotResponse = {
+  ok: boolean;
+  data?: RunSnapshot | { snapshot?: RunSnapshot };
+  error?: {
+    message?: string;
   };
-}
+};
+
+const FALLBACK_ERROR = "The table could not save that move.";
+const REFRESH_ERROR = "The table could not refresh the latest run state.";
 
 async function parseJsonResponse<T>(response: Response): Promise<T | null> {
   try {
@@ -68,14 +60,41 @@ function apiErrorMessage(body: ActionResponse | JournalResponse | null) {
   return body?.error?.message ?? FALLBACK_ERROR;
 }
 
+function snapshotFromResponse(body: SnapshotResponse | null) {
+  if (!body?.ok || !body.data) {
+    return null;
+  }
+
+  if ("run" in body.data) {
+    return body.data;
+  }
+
+  return body.data.snapshot ?? null;
+}
+
 export function PlayTable({ initialSnapshot }: PlayTableProps) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [journalBody, setJournalBody] = useState("");
-  const [lastAction, setLastAction] =
-    useState<Omit<ActionSummary, "id" | "createdAt"> | null>(null);
+  const [lastAction, setLastAction] = useState<ActionSummary | null>(null);
   const [lastDiceRolls, setLastDiceRolls] = useState<DiceRoll[]>([]);
+
+  async function refreshSnapshot() {
+    const response = await fetch(`/api/runs/${snapshot.run.id}`);
+    const body = await parseJsonResponse<SnapshotResponse>(response);
+    const refreshedSnapshot = snapshotFromResponse(body);
+
+    if (!response.ok || !refreshedSnapshot) {
+      throw new Error(REFRESH_ERROR);
+    }
+
+    setSnapshot(refreshedSnapshot);
+    setLastAction(null);
+    setLastDiceRolls([]);
+
+    return refreshedSnapshot;
+  }
 
   async function submitAction(action: LegalAction) {
     setSaving(true);
@@ -92,14 +111,20 @@ export function PlayTable({ initialSnapshot }: PlayTableProps) {
       });
       const body = await parseJsonResponse<ActionResponse>(response);
 
-      if (!response.ok || !body?.ok || !body.data?.snapshot) {
-        setError(apiErrorMessage(body));
+      if (!response.ok || !body?.ok || !body.data?.snapshot || !body.data.action) {
+        const message = apiErrorMessage(body);
+
+        if (response.status === 409) {
+          await refreshSnapshot().catch(() => undefined);
+        }
+
+        setError(message);
         return;
       }
 
       setSnapshot(body.data.snapshot);
-      setLastAction(body.data.summary ?? null);
-      setLastDiceRolls(body.data.diceRolls ?? body.data.summary?.diceRolls ?? []);
+      setLastAction(body.data.action);
+      setLastDiceRolls(body.data.action.diceRolls);
     } catch {
       setError(FALLBACK_ERROR);
     } finally {
@@ -121,8 +146,10 @@ export function PlayTable({ initialSnapshot }: PlayTableProps) {
     setSaving(true);
     setError(null);
 
+    let response: Response;
+
     try {
-      const response = await fetch(`/api/runs/${snapshot.run.id}/journal`, {
+      response = await fetch(`/api/runs/${snapshot.run.id}/journal`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -131,21 +158,30 @@ export function PlayTable({ initialSnapshot }: PlayTableProps) {
           body: trimmedBody,
         }),
       });
+    } catch {
+      setError(FALLBACK_ERROR);
+      setSaving(false);
+      return;
+    }
+
+    try {
       const body = await parseJsonResponse<JournalResponse>(response);
 
       if (!response.ok || !body?.ok || !body.data) {
-        setError(apiErrorMessage(body));
+        const message = apiErrorMessage(body);
+
+        if (response.status === 409) {
+          await refreshSnapshot().catch(() => undefined);
+        }
+
+        setError(message);
         return;
       }
 
-      const journalEntry = body.data;
-
-      setSnapshot((current) => dayCompleteSnapshot(current, journalEntry));
+      await refreshSnapshot();
       setJournalBody("");
-      setLastAction(null);
-      setLastDiceRolls([]);
     } catch {
-      setError(FALLBACK_ERROR);
+      setError(REFRESH_ERROR);
     } finally {
       setSaving(false);
     }

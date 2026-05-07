@@ -99,7 +99,7 @@ describe("PlayTable", () => {
     expect(screen.getByRole("button", { name: /camp/i })).toBeInTheDocument();
   });
 
-  it("disables non-journal actions while saving, posts to actions, and renders returned prompt and dice", async () => {
+  it("disables non-journal actions while saving, posts to actions, and renders returned action and dice", async () => {
     const user = userEvent.setup();
     let resolveFetch: (response: Response) => void = () => {};
     const savedSnapshot = snapshot({
@@ -111,26 +111,7 @@ describe("PlayTable", () => {
         tileId: baseSnapshot.currentTile.id,
       },
       legalActions: [{ type: "journal", label: "Write Journal" }],
-      recentActions: [
-        {
-          id: "action-1",
-          type: "camp",
-          title: "Camp",
-          body: "You recovered under cover.",
-          dayNumber: 2,
-          tileId: baseSnapshot.currentTile.id,
-          diceRolls: [
-            {
-              id: "roll-1",
-              notation: "1d6",
-              purpose: "camp",
-              values: [4],
-              total: 4,
-            },
-          ],
-          createdAt: "2026-05-07T12:01:00.000Z",
-        },
-      ],
+      recentActions: [],
     });
 
     fetchMock.mockReturnValue(
@@ -161,7 +142,8 @@ describe("PlayTable", () => {
         ok: true,
         data: {
           snapshot: savedSnapshot,
-          summary: {
+          action: {
+            id: "action-1",
             type: "camp",
             title: "Camp",
             body: "You recovered under cover.",
@@ -176,16 +158,8 @@ describe("PlayTable", () => {
                 total: 4,
               },
             ],
+            createdAt: "2026-05-07T12:01:00.000Z",
           },
-          diceRolls: [
-            {
-              id: "roll-1",
-              notation: "1d6",
-              purpose: "camp",
-              values: [4],
-              total: 4,
-            },
-          ],
         },
       }),
     );
@@ -198,16 +172,16 @@ describe("PlayTable", () => {
     expect(screen.getByText(/total 4/i)).toBeInTheDocument();
   });
 
-  it("displays API errors and re-enables legal actions", async () => {
+  it("displays non-stale API errors and re-enables legal actions", async () => {
     const user = userEvent.setup();
 
     fetchMock.mockResolvedValueOnce(
       jsonResponse(
         {
           ok: false,
-          error: { message: "That action is no longer valid for this run state." },
+          error: { message: "The table could not resolve that move." },
         },
-        { status: 409 },
+        { status: 500 },
       ),
     );
 
@@ -218,7 +192,7 @@ describe("PlayTable", () => {
 
     expect(
       await screen.findByText(
-        /that action is no longer valid for this run state/i,
+        /the table could not resolve that move/i,
       ),
     ).toBeInTheDocument();
     await waitFor(() => expect(campButton).toBeEnabled());
@@ -227,7 +201,99 @@ describe("PlayTable", () => {
     ).toBeInTheDocument();
   });
 
-  it("posts journal prompts to the journal endpoint and shows the saved state without using actions", async () => {
+  it("refreshes the snapshot after journal save and never posts journal bodies to actions", async () => {
+    const user = userEvent.setup();
+    const journalSnapshot = snapshot({
+      pendingPrompt: {
+        type: "journal_available",
+        title: "Write the day down",
+        body: "Record what happened before resting.",
+        dayNumber: 2,
+        tileId: baseSnapshot.currentTile.id,
+      },
+      legalActions: [{ type: "journal", label: "Write Journal" }],
+    });
+    const refreshedSnapshot = snapshot({
+      run: {
+        ...baseSnapshot.run,
+        currentDay: 2,
+        updatedAt: "2026-05-07T12:03:00.000Z",
+      },
+      pendingPrompt: {
+        type: "day_complete",
+        title: "Day logged",
+        body: "Your field journal has been saved for the night.",
+      },
+      legalActions: [{ type: "next_day", label: "Next Day" }],
+      latestJournalEntry: {
+        id: "journal-1",
+        runId: baseSnapshot.run.id,
+        dayNumber: 2,
+        tileId: baseSnapshot.currentTile.id,
+        body: "Found a cold trail near the ridge.",
+        updatedAt: "2026-05-07T12:02:00.000Z",
+      },
+    });
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          ok: true,
+          data: {
+            id: "journal-1",
+            runId: baseSnapshot.run.id,
+            dayNumber: 2,
+            tileId: baseSnapshot.currentTile.id,
+            body: "Found a cold trail near the ridge.",
+            updatedAt: "2026-05-07T12:02:00.000Z",
+          },
+        },
+        { status: 201 },
+      ),
+    );
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        ok: true,
+        data: refreshedSnapshot,
+      }),
+    );
+
+    render(<PlayTable initialSnapshot={journalSnapshot} />);
+
+    await user.type(
+      screen.getByLabelText(/journal entry/i),
+      "Found a cold trail near the ridge.",
+    );
+    await user.click(screen.getByRole("button", { name: /save journal/i }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/runs/${baseSnapshot.run.id}/journal`,
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            dayNumber: 2,
+            tileId: baseSnapshot.currentTile.id,
+            body: "Found a cold trail near the ridge.",
+          }),
+        }),
+      );
+    });
+    expect(fetchMock).toHaveBeenCalledWith(`/api/runs/${baseSnapshot.run.id}`);
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      expect.stringContaining("/actions"),
+      expect.anything(),
+    );
+    expect(
+      await screen.findByRole("heading", { name: /day logged/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/your field journal has been saved for the night/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/found a cold trail near the ridge/i)).toBeInTheDocument();
+  });
+
+  it("shows an error instead of fabricating state when journal refresh fails", async () => {
     const user = userEvent.setup();
     const journalSnapshot = snapshot({
       pendingPrompt: {
@@ -256,35 +322,137 @@ describe("PlayTable", () => {
         { status: 201 },
       ),
     );
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          ok: false,
+          error: { message: "That run could not be found for this session." },
+        },
+        { status: 404 },
+      ),
+    );
 
     render(<PlayTable initialSnapshot={journalSnapshot} />);
 
-    await user.type(
-      screen.getByLabelText(/journal entry/i),
-      "Found a cold trail near the ridge.",
-    );
+    await user.type(screen.getByLabelText(/journal entry/i), "Found a cold trail.");
     await user.click(screen.getByRole("button", { name: /save journal/i }));
 
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        `/api/runs/${baseSnapshot.run.id}/journal`,
-        expect.objectContaining({
-          method: "POST",
-          body: JSON.stringify({
-            dayNumber: 2,
-            tileId: baseSnapshot.currentTile.id,
-            body: "Found a cold trail near the ridge.",
-          }),
-        }),
-      );
-    });
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      expect.stringContaining("/actions"),
-      expect.anything(),
-    );
     expect(
-      await screen.findByRole("heading", { name: /journal saved/i }),
+      await screen.findByText(/the table could not refresh the latest run state/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/found a cold trail near the ridge/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /write the day down/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: /journal saved/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("refreshes snapshot state after a stale action error", async () => {
+    const user = userEvent.setup();
+    const refreshedSnapshot = snapshot({
+      pendingPrompt: {
+        type: "journal_available",
+        title: "Write the day down",
+        body: "Record what happened before resting.",
+        dayNumber: 2,
+        tileId: baseSnapshot.currentTile.id,
+      },
+      legalActions: [{ type: "journal", label: "Write Journal" }],
+    });
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          ok: false,
+          error: { message: "That action is no longer valid for this run state." },
+        },
+        { status: 409 },
+      ),
+    );
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        ok: true,
+        data: refreshedSnapshot,
+      }),
+    );
+
+    render(<PlayTable initialSnapshot={baseSnapshot} />);
+
+    await user.click(screen.getByRole("button", { name: /camp/i }));
+
+    expect(
+      await screen.findByText(
+        /that action is no longer valid for this run state/i,
+      ),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(`/api/runs/${baseSnapshot.run.id}`);
+    expect(
+      screen.getByRole("heading", { name: /write the day down/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /camp/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save journal/i })).toBeDisabled();
+  });
+
+  it("refreshes snapshot state after a stale journal error", async () => {
+    const user = userEvent.setup();
+    const journalSnapshot = snapshot({
+      pendingPrompt: {
+        type: "journal_available",
+        title: "Write the day down",
+        body: "Record what happened before resting.",
+        dayNumber: 2,
+        tileId: baseSnapshot.currentTile.id,
+      },
+      legalActions: [{ type: "journal", label: "Write Journal" }],
+    });
+    const refreshedSnapshot = snapshot({
+      pendingPrompt: {
+        type: "camp_required",
+        title: "Camp before nightfall",
+        body: "Choose how to spend the evening.",
+        choices: [{ key: "skip_food", label: "Skip Food" }],
+      },
+      legalActions: [
+        {
+          type: "camp",
+          label: "Skip Food",
+          payload: { foodChoice: "skip_food" },
+        },
+      ],
+    });
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(
+        {
+          ok: false,
+          error: { message: "That journal prompt is no longer active for this run." },
+        },
+        { status: 409 },
+      ),
+    );
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        ok: true,
+        data: refreshedSnapshot,
+      }),
+    );
+
+    render(<PlayTable initialSnapshot={journalSnapshot} />);
+
+    await user.type(screen.getByLabelText(/journal entry/i), "Found a cold trail.");
+    await user.click(screen.getByRole("button", { name: /save journal/i }));
+
+    expect(
+      await screen.findByText(
+        /that journal prompt is no longer active for this run/i,
+      ),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(`/api/runs/${baseSnapshot.run.id}`);
+    expect(
+      screen.getByRole("heading", { name: /camp before nightfall/i }),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/journal entry/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /skip food/i })).toBeInTheDocument();
   });
 });
