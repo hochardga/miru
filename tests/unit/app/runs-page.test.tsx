@@ -22,6 +22,9 @@ describe("RunsPage", () => {
   });
 
   it("only offers resume links for active runs", async () => {
+    const longJournalEntry =
+      "Reached the beacon after a long climb through freezing rain, then mapped every marker along the ridge while the signal kept pulsing from somewhere below the old relay tower.";
+
     mockRequireUser.mockResolvedValue({
       supabase: {},
       user: { id: "user-1" },
@@ -41,7 +44,7 @@ describe("RunsPage", () => {
         status: "won",
         current_day: 12,
         updated_at: "2026-05-06T15:30:00.000Z",
-        last_journal_entry: "Reached the beacon.",
+        last_journal_entry: longJournalEntry,
       },
     ]);
 
@@ -56,7 +59,12 @@ describe("RunsPage", () => {
     expect(screen.getByText(/no journal entry yet/i)).toBeInTheDocument();
     expect(screen.getByText(/updated may 7, 2026/i)).toBeInTheDocument();
     expect(screen.getByText(/status: won/i)).toBeInTheDocument();
-    expect(screen.getByText(/reached the beacon/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Reached the beacon after a long climb through freezing rain, then mapped every marker along the ridge while the signal kept pulsing from somewhere below the old...",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(longJournalEntry)).not.toBeInTheDocument();
     expect(screen.getByText(/updated may 6, 2026/i)).toBeInTheDocument();
   });
 });

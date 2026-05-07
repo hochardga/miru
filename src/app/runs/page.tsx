@@ -7,6 +7,8 @@ import { requireUser } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
+const JOURNAL_EXCERPT_LENGTH = 163;
+
 function formatRunStatus(status: string) {
   return status
     .split("_")
@@ -31,6 +33,18 @@ function formatUpdatedDate(value: string | null | undefined) {
     year: "numeric",
     timeZone: "UTC",
   }).format(date)}`;
+}
+
+function journalExcerpt(body: string | null) {
+  if (!body) {
+    return "No journal entry yet.";
+  }
+
+  if (body.length <= JOURNAL_EXCERPT_LENGTH) {
+    return body;
+  }
+
+  return `${body.slice(0, JOURNAL_EXCERPT_LENGTH - 3).trimEnd()}...`;
 }
 
 export default async function RunsPage() {
@@ -64,7 +78,7 @@ export default async function RunsPage() {
               ) : null}
             </div>
             <p className="break-words text-sm leading-6 text-ink-muted">
-              {run.last_journal_entry ?? "No journal entry yet."}
+              {journalExcerpt(run.last_journal_entry)}
             </p>
           </Panel>
         ))

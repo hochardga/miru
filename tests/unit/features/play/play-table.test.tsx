@@ -188,6 +188,53 @@ describe("PlayTable", () => {
     ).toBeInTheDocument();
   });
 
+  it("keeps run-level active enemy attached to the current tile inspection", async () => {
+    const user = userEvent.setup();
+    const visibleTile: RunTile = {
+      id: "33333333-3333-4333-8333-333333333333",
+      coordinate: "E01",
+      row: 1,
+      column: "E",
+      terrain: "grasslands",
+      visited: false,
+      icons: [],
+      eventHistory: [],
+      repeatabilityState: {},
+      enemyState: null,
+      notes: null,
+    };
+
+    render(
+      <PlayTable
+        initialSnapshot={snapshot({
+          activeEnemy: {
+            key: "glass-warden",
+            name: "Glass Warden",
+            hp: 8,
+            atk: 3,
+            def: 2,
+            rewardKey: "glass-key",
+          },
+          visibleTiles: [visibleTile],
+        })}
+      />,
+    );
+
+    expect(screen.getByText(/active enemy: glass warden/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /inspect tile e01/i }));
+
+    expect(screen.getByRole("heading", { name: /e01/i })).toBeInTheDocument();
+    expect(
+      screen.queryByText(/active enemy: glass warden/i),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /inspect tile b03/i }));
+
+    expect(screen.getByRole("heading", { name: /b03/i })).toBeInTheDocument();
+    expect(screen.getByText(/active enemy: glass warden/i)).toBeInTheDocument();
+  });
+
   it("disables non-journal actions while saving, posts to actions, and renders returned action and dice", async () => {
     const user = userEvent.setup();
     let resolveFetch: (response: Response) => void = () => {};

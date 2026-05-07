@@ -15,7 +15,7 @@ export function InventoryPanel({ items }: InventoryPanelProps) {
       <div className="flex min-w-0 items-baseline justify-between gap-3">
         <h2 className="font-heading text-2xl">Inventory</h2>
         <span className="shrink-0 font-mono text-xs uppercase text-ink-muted">
-          {items.length} items
+          {items.length} {items.length === 1 ? "item" : "items"}
         </span>
       </div>
 

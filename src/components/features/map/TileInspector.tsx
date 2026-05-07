@@ -16,7 +16,7 @@ export function TileInspector({
   isCurrent,
   activeEnemyName,
 }: TileInspectorProps) {
-  const enemyName = tile.enemyState?.name ?? activeEnemyName;
+  const enemyName = tile.enemyState?.name ?? (isCurrent ? activeEnemyName : null);
 
   return (
     <aside className="grid min-w-0 gap-3 border-t border-ink-border pt-4">
