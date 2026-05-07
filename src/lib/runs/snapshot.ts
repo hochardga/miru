@@ -1,6 +1,6 @@
 import { coordinateToId, getVisibleMapTiles } from "@/lib/game/map";
 import type { RunPrompt, RunSnapshot, RunTile } from "@/lib/game/types";
-import type { RouteSupabaseClient } from "@/lib/runs/queries";
+import { UUID_PATTERN, type RouteSupabaseClient } from "@/lib/runs/queries";
 
 type RunTileRow = {
   id: string;
@@ -13,6 +13,23 @@ type RunTileRow = {
   repeatability_state: Record<string, unknown> | null;
   enemy_state: RunTile["enemyState"];
   notes: string | null;
+};
+type ActionLogRow = {
+  id: string;
+  action_type: RunSnapshot["recentActions"][number]["type"];
+  day_number: number;
+  tile_id: string | null;
+  result: Record<string, unknown> | null;
+  dice_rolls: RunSnapshot["recentActions"][number]["diceRolls"] | null;
+  created_at: string;
+};
+type JournalEntryRow = {
+  id: string;
+  run_id: string;
+  day_number: number;
+  tile_id: string | null;
+  body: string;
+  updated_at: string;
 };
 
 export class RunSnapshotIncompleteError extends Error {
@@ -49,6 +66,46 @@ function mapTile(row: RunTileRow): RunTile {
     repeatabilityState: row.repeatability_state ?? {},
     enemyState: row.enemy_state ?? null,
     notes: row.notes,
+  };
+}
+
+function stringFromResult(
+  result: ActionLogRow["result"],
+  key: "title" | "body",
+  fallback: string,
+) {
+  const value = result?.[key];
+
+  return String(value ?? fallback);
+}
+
+function mapAction(row: ActionLogRow): RunSnapshot["recentActions"][number] {
+  return {
+    id: row.id,
+    type: row.action_type,
+    title: stringFromResult(row.result, "title", row.action_type),
+    body: stringFromResult(row.result, "body", ""),
+    dayNumber: row.day_number,
+    tileId: row.tile_id,
+    diceRolls: row.dice_rolls ?? [],
+    createdAt: row.created_at,
+  };
+}
+
+function mapJournalEntry(
+  row: JournalEntryRow | null,
+): RunSnapshot["latestJournalEntry"] {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    runId: row.run_id,
+    dayNumber: row.day_number,
+    tileId: row.tile_id,
+    body: row.body,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -160,6 +217,10 @@ export async function getRunSnapshot(
   userId: string,
   runId: string,
 ) {
+  if (!UUID_PATTERN.test(runId)) {
+    return null;
+  }
+
   const { data: run, error: runError } = await supabase
     .from("runs")
     .select("*")
@@ -198,6 +259,8 @@ export async function getRunSnapshot(
     { data: visibleTiles, error: visibleTilesError },
     { data: inventory, error: inventoryError },
     { data: techSkills, error: techSkillsError },
+    { data: recentActions, error: recentActionsError },
+    { data: latestJournal, error: journalError },
   ] = await Promise.all([
     supabase.from("run_tiles").select("*").eq("run_id", run.id),
     supabase
@@ -206,7 +269,24 @@ export async function getRunSnapshot(
       .eq("run_id", run.id)
       .order("category")
       .order("item_name"),
-    supabase.from("tech_skills").select("*").eq("run_id", run.id).order("skill_name"),
+    supabase
+      .from("tech_skills")
+      .select("*")
+      .eq("run_id", run.id)
+      .order("skill_name"),
+    supabase
+      .from("action_log")
+      .select("id,action_type,day_number,tile_id,result,dice_rolls,created_at")
+      .eq("run_id", run.id)
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase
+      .from("journal_entries")
+      .select("id,run_id,day_number,tile_id,body,updated_at")
+      .eq("run_id", run.id)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (visibleTilesError) {
@@ -221,13 +301,21 @@ export async function getRunSnapshot(
     throw techSkillsError;
   }
 
+  if (recentActionsError) {
+    throw recentActionsError;
+  }
+
+  if (journalError) {
+    throw journalError;
+  }
+
   return mapRunRowsToSnapshot({
     run,
     currentTile,
     visibleTiles: visibleTiles ?? [],
     inventory: inventory ?? [],
     techSkills: techSkills ?? [],
-    recentActions: [],
-    latestJournalEntry: null,
+    recentActions: ((recentActions ?? []) as ActionLogRow[]).map(mapAction),
+    latestJournalEntry: mapJournalEntry(latestJournal as JournalEntryRow | null),
   });
 }

@@ -77,4 +77,26 @@ describe("/api/runs/[runId]", () => {
       },
     });
   });
+
+  it("returns 401 when no user session exists", async () => {
+    mockGetRouteUser.mockResolvedValue({
+      supabase: {},
+      user: null,
+    });
+
+    const { GET } = await import("@/app/api/runs/[runId]/route");
+    const response = await GET(new Request("http://localhost/api/runs/run-1"), {
+      params: Promise.resolve({ runId: "run-1" }),
+    });
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: {
+        code: "UNAUTHORIZED",
+        message: "Start from the home screen to create or restore your Miru session.",
+      },
+    });
+    expect(mockGetRunSnapshot).not.toHaveBeenCalled();
+  });
 });
