@@ -32,6 +32,8 @@ export async function persistGameActionResult({
       current_day: snapshot.run.currentDay,
       hp: snapshot.stats.hp,
       ep: snapshot.stats.ep,
+      base_atk: snapshot.stats.baseAtk,
+      base_def: snapshot.stats.baseDef,
       bitliths: snapshot.stats.bitliths,
       starvation_count: snapshot.stats.starvationCount,
       sleep_deprivation_count: snapshot.stats.sleepDeprivationCount,
@@ -159,7 +161,8 @@ export async function applyRunAction({
     snapshot: updatedSnapshot,
     action: {
       ...result.summary,
-      ...(actionRow ? { id: actionRow.id, createdAt: actionRow.createdAt } : {}),
+      id: actionRow.id,
+      createdAt: actionRow.createdAt,
     },
   };
 }
