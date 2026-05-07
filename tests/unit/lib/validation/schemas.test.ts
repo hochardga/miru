@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { runsQuerySchema, startRunRequestSchema } from "@/lib/validation/schemas";
+import {
+  gameActionRequestSchema,
+  journalRequestSchema,
+  runsQuerySchema,
+  startRunRequestSchema,
+} from "@/lib/validation/schemas";
 
 describe("startRunRequestSchema", () => {
   it("accepts a valid starting column and rejects an invalid one", () => {
@@ -84,5 +89,44 @@ describe("runsQuerySchema", () => {
         limit: "banana",
       }),
     ).toThrowError();
+  });
+});
+
+describe("gameActionRequestSchema", () => {
+  it("accepts legal Phase 1 actions", () => {
+    expect(gameActionRequestSchema.parse({ type: "next_day" })).toEqual({
+      type: "next_day",
+    });
+    expect(
+      gameActionRequestSchema.parse({
+        type: "camp",
+        payload: { foodChoice: "eat_meal_bar" },
+      }),
+    ).toEqual({
+      type: "camp",
+      payload: { foodChoice: "eat_meal_bar" },
+    });
+  });
+
+  it("rejects stale or unsupported actions", () => {
+    expect(() => gameActionRequestSchema.parse({ type: "move", payload: {} })).toThrow();
+  });
+});
+
+describe("journalRequestSchema", () => {
+  it("limits entries to 1000 characters", () => {
+    expect(
+      journalRequestSchema.parse({
+        dayNumber: 1,
+        body: "The field kit held together.",
+      }),
+    ).toMatchObject({ dayNumber: 1 });
+
+    expect(() =>
+      journalRequestSchema.parse({
+        dayNumber: 1,
+        body: "x".repeat(1001),
+      }),
+    ).toThrow();
   });
 });
