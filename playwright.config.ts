@@ -11,6 +11,12 @@ const localSmokeEnv = {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "test-anon-key",
   NEXT_PUBLIC_APP_URL: localSmokeBaseUrl,
   E2E_DISABLE_REMOTE_AUTH: process.env.E2E_DISABLE_REMOTE_AUTH ?? "true",
+  E2E_TEST_BACKEND: process.env.E2E_TEST_BACKEND ?? "true",
+  E2E_RUNTIME: process.env.E2E_RUNTIME ?? "playwright",
+  NEXT_PUBLIC_E2E_TEST_BACKEND:
+    process.env.NEXT_PUBLIC_E2E_TEST_BACKEND ?? "true",
+  NEXT_PUBLIC_E2E_RUNTIME:
+    process.env.NEXT_PUBLIC_E2E_RUNTIME ?? "playwright",
 };
 
 export default defineConfig({
