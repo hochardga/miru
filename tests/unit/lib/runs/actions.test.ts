@@ -293,11 +293,15 @@ describe("persistGameActionResult", () => {
       p_inventory: [
         {
           item_key: "meal-bar",
+          item_name: "Meal Bar",
+          category: "food",
           quantity: 2,
           metadata: { sealed: true },
         },
         {
           item_key: "rusted-knife",
+          item_name: "Rusted Knife",
+          category: "equipment",
           quantity: 1,
           metadata: { edge: "chipped" },
         },

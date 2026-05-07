@@ -32,4 +32,16 @@ describe("0003_persist_run_action_result migration", () => {
     );
     expect(migration).toMatch(/grant execute on function public\.persist_run_action_result/i);
   });
+
+  it("upserts snapshot inventory rows so new items are persisted", () => {
+    const migration = fs.readFileSync(migrationPath, "utf8");
+
+    expect(migration).toMatch(/insert into run_inventory\s*\(/i);
+    expect(migration).toMatch(
+      /run_id,\s*user_id,\s*item_key,\s*item_name,\s*category,\s*quantity,\s*metadata/i,
+    );
+    expect(migration).toMatch(/on conflict\s*\(\s*run_id,\s*item_key\s*\)\s*do update/i);
+    expect(migration).toMatch(/item_name = excluded\.item_name/i);
+    expect(migration).toMatch(/category = excluded\.category/i);
+  });
 });

@@ -97,16 +97,39 @@ begin
   with inventory_payload as (
     select *
     from jsonb_to_recordset(coalesce(p_inventory, '[]'::jsonb))
-      as items(item_key text, quantity integer, metadata jsonb)
+      as items(
+        item_key text,
+        item_name text,
+        category text,
+        quantity integer,
+        metadata jsonb
+      )
   )
-  update run_inventory as ri
-  set quantity = inventory_payload.quantity,
-      metadata = coalesce(inventory_payload.metadata, '{}'::jsonb),
-      updated_at = now()
+  insert into run_inventory (
+    run_id,
+    user_id,
+    item_key,
+    item_name,
+    category,
+    quantity,
+    metadata
+  )
+  select
+    p_run_id,
+    p_user_id,
+    inventory_payload.item_key,
+    inventory_payload.item_name,
+    inventory_payload.category,
+    inventory_payload.quantity,
+    coalesce(inventory_payload.metadata, '{}'::jsonb)
   from inventory_payload
-  where ri.run_id = p_run_id
-    and ri.user_id = p_user_id
-    and ri.item_key = inventory_payload.item_key;
+  on conflict (run_id, item_key) do update
+    set user_id = excluded.user_id,
+        item_name = excluded.item_name,
+        category = excluded.category,
+        quantity = excluded.quantity,
+        metadata = excluded.metadata,
+        updated_at = now();
 
   insert into action_log (
     run_id,

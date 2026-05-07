@@ -102,6 +102,8 @@ export async function persistGameActionResult({
     p_notes: snapshot.currentTile.notes,
     p_inventory: snapshot.inventory.map((item) => ({
       item_key: item.key,
+      item_name: item.name,
+      category: item.category,
       quantity: item.quantity,
       metadata: item.metadata,
     })),
