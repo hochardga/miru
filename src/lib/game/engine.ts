@@ -5,8 +5,47 @@ import type { GameAction, GameActionResult, RunSnapshot } from "@/lib/game/types
 
 const randomDice: DiceRoller = { roll: rollDice };
 
-function hasLegalAction(snapshot: RunSnapshot, type: GameAction["type"]) {
-  return snapshot.legalActions.some((action) => action.type === type);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isEmptyPayload(payload: Record<string, unknown> | undefined) {
+  return !payload || Object.keys(payload).length === 0;
+}
+
+function payloadsMatch(
+  legalPayload: Record<string, unknown> | undefined,
+  submittedPayload: Record<string, unknown> | undefined,
+): boolean {
+  if (isEmptyPayload(legalPayload) && isEmptyPayload(submittedPayload)) {
+    return true;
+  }
+
+  if (!legalPayload || !submittedPayload) {
+    return false;
+  }
+
+  const legalEntries = Object.entries(legalPayload);
+
+  if (legalEntries.length !== Object.keys(submittedPayload).length) {
+    return false;
+  }
+
+  return legalEntries.every(([key, value]) => {
+    const submittedValue = submittedPayload[key];
+
+    if (isRecord(value) && isRecord(submittedValue)) {
+      return payloadsMatch(value, submittedValue);
+    }
+
+    return Object.is(value, submittedValue);
+  });
+}
+
+function hasLegalAction(snapshot: RunSnapshot, action: GameAction) {
+  return snapshot.legalActions.some(
+    (legalAction) => legalAction.type === action.type && payloadsMatch(legalAction.payload, action.payload),
+  );
 }
 
 export function applyGameAction(
@@ -14,7 +53,7 @@ export function applyGameAction(
   action: GameAction,
   dice: DiceRoller = randomDice,
 ): GameActionResult {
-  if (!hasLegalAction(snapshot, action.type)) {
+  if (!hasLegalAction(snapshot, action)) {
     throw new Error("INVALID_ACTION_FOR_STATE");
   }
 

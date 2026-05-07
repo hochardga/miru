@@ -55,12 +55,10 @@ function baseSnapshot(
             title: "Ready for the next day",
             body: "Begin the next day when your notes are settled.",
           },
-    legalActions: [
-      {
-        type: promptType === "camp_required" ? "camp" : "next_day",
-        label: promptType === "camp_required" ? "Camp" : "Next Day",
-      },
-    ],
+    legalActions:
+      promptType === "camp_required"
+        ? [{ type: "camp", label: "Camp", payload: { foodChoice: "eat_meal_bar" } }]
+        : [{ type: "next_day", label: "Next Day" }],
     recentActions: [],
     latestJournalEntry: null,
   };
@@ -102,6 +100,16 @@ describe("applyGameAction", () => {
   it("rejects actions that are illegal for the current prompt", () => {
     expect(() =>
       applyGameAction(baseSnapshot("camp_required"), { type: "next_day" }, createFixedDiceRoller([])),
+    ).toThrow("INVALID_ACTION_FOR_STATE");
+  });
+
+  it("rejects payload-bearing actions that do not match the legal action payload", () => {
+    expect(() =>
+      applyGameAction(
+        baseSnapshot("camp_required"),
+        { type: "camp", payload: { foodChoice: "skip_food" } },
+        createFixedDiceRoller([]),
+      ),
     ).toThrow("INVALID_ACTION_FOR_STATE");
   });
 });
