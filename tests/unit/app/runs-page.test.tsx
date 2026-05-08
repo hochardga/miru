@@ -22,6 +22,9 @@ describe("RunsPage", () => {
   });
 
   it("only offers resume links for active runs", async () => {
+    const longJournalEntry =
+      "Reached the beacon after a long climb through freezing rain, then mapped every marker along the ridge while the signal kept pulsing from somewhere below the old relay tower.";
+
     mockRequireUser.mockResolvedValue({
       supabase: {},
       user: { id: "user-1" },
@@ -32,6 +35,7 @@ describe("RunsPage", () => {
         title: "Open Circuit",
         status: "active",
         current_day: 4,
+        updated_at: "2026-05-07T12:00:00.000Z",
         last_journal_entry: null,
       },
       {
@@ -39,17 +43,28 @@ describe("RunsPage", () => {
         title: "Victory Lap",
         status: "won",
         current_day: 12,
-        last_journal_entry: "Reached the beacon.",
+        updated_at: "2026-05-06T15:30:00.000Z",
+        last_journal_entry: longJournalEntry,
       },
     ]);
 
     render(await RunsPage());
 
-    expect(screen.getAllByRole("link", { name: /resume run/i })).toHaveLength(1);
-    expect(screen.getByRole("link", { name: /resume run/i })).toHaveAttribute(
+    expect(screen.getAllByRole("link", { name: /^resume$/i })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: /^resume$/i })).toHaveAttribute(
       "href",
       "/play/run-1",
     );
+    expect(screen.getByText(/day 4/i)).toBeInTheDocument();
+    expect(screen.getByText(/no journal entry yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/updated may 7, 2026/i)).toBeInTheDocument();
     expect(screen.getByText(/status: won/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Reached the beacon after a long climb through freezing rain, then mapped every marker along the ridge while the signal kept pulsing from somewhere below the old...",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(longJournalEntry)).not.toBeInTheDocument();
+    expect(screen.getByText(/updated may 6, 2026/i)).toBeInTheDocument();
   });
 });

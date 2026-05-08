@@ -1,5 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  E2E_SESSION_COOKIE,
+  isE2ETestBackendEnabled,
+  isValidE2EUserId,
+} from "@/lib/e2e/config";
 import { getPublicEnv } from "@/lib/env";
 
 export const PROTECTED_ROUTE_PREFIXES = ["/play", "/runs", "/rules", "/settings"];
@@ -11,11 +16,30 @@ export function isProtectedPath(pathname: string) {
 }
 
 export async function updateSession(request: NextRequest) {
+  const protectedPath = isProtectedPath(request.nextUrl.pathname);
+
+  if (isE2ETestBackendEnabled()) {
+    if (!protectedPath) {
+      return NextResponse.next();
+    }
+
+    const e2eUserId = request.cookies.get(E2E_SESSION_COOKIE)?.value;
+    if (!isValidE2EUserId(e2eUserId)) {
+      return NextResponse.redirect(new URL("/?reason=session-required", request.url));
+    }
+
+    return NextResponse.next();
+  }
+
   if (
     process.env.E2E_DISABLE_REMOTE_AUTH === "true" &&
-    isProtectedPath(request.nextUrl.pathname)
+    protectedPath
   ) {
     return NextResponse.redirect(new URL("/?reason=session-required", request.url));
+  }
+
+  if (!protectedPath) {
+    return NextResponse.next();
   }
 
   const env = getPublicEnv();
@@ -48,7 +72,7 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user && isProtectedPath(request.nextUrl.pathname)) {
+  if (!user) {
     return NextResponse.redirect(new URL("/?reason=session-required", request.url));
   }
 

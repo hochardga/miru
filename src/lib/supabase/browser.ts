@@ -1,10 +1,21 @@
 import { createBrowserClient } from "@supabase/ssr";
+import { createE2EBrowserSupabaseClient } from "@/lib/e2e/browserSupabase";
+import { isE2ETestBackendEnabled } from "@/lib/e2e/config";
 import { getPublicEnv } from "@/lib/env";
 
-let browserClient: ReturnType<typeof createBrowserClient> | null = null;
+type BrowserSupabaseClient =
+  | ReturnType<typeof createBrowserClient>
+  | ReturnType<typeof createE2EBrowserSupabaseClient>;
+
+let browserClient: BrowserSupabaseClient | null = null;
 
 export function createBrowserSupabaseClient() {
   if (browserClient) {
+    return browserClient;
+  }
+
+  if (isE2ETestBackendEnabled()) {
+    browserClient = createE2EBrowserSupabaseClient();
     return browserClient;
   }
 
