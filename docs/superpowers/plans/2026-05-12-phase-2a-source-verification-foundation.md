@@ -175,7 +175,7 @@ function idForHeadingPath(headingPath) {
   return slugify(headingPath.join(" "));
 }
 
-const implemented = new Set([
+const currentPhaseHeadings = new Set([
   "core-game-model-game-session",
   "core-game-model-player-character-state",
   "core-game-model-map-state",
@@ -219,10 +219,6 @@ const notes = new Map([
 ]);
 
 function statusFor(id) {
-  if (implemented.has(id)) {
-    return "implemented";
-  }
-
   if (ambiguous.has(id)) {
     return "ambiguous";
   }
@@ -235,7 +231,7 @@ function statusFor(id) {
 }
 
 function phaseFor(id) {
-  if (implemented.has(id)) {
+  if (currentPhaseHeadings.has(id)) {
     return "current";
   }
 
@@ -261,10 +257,6 @@ function phaseFor(id) {
 function noteFor(id, status) {
   if (notes.has(id)) {
     return notes.get(id);
-  }
-
-  if (status === "implemented") {
-    return "Covered by the current Phase 1 engine, map, survival, or combat implementation and tests.";
   }
 
   if (status === "deferred") {
@@ -372,7 +364,8 @@ describe("Miru 1 v2e source verification manifest", () => {
   it("summarizes source verification statuses for the manifest", () => {
     expect(SOURCE_VERIFICATION_SUMMARY).toEqual(summarizeSourceVerification(SOURCE_VERIFICATION_ENTRIES));
     expect(SOURCE_VERIFICATION_SUMMARY.total).toBe(81);
-    expect(SOURCE_VERIFICATION_SUMMARY.byStatus.implemented).toBe(9);
+    expect(SOURCE_VERIFICATION_SUMMARY.byStatus.implemented).toBe(0);
+    expect(SOURCE_VERIFICATION_SUMMARY.byStatus.verified).toBe(68);
     expect(SOURCE_VERIFICATION_SUMMARY.byStatus.ambiguous).toBe(9);
     expect(SOURCE_VERIFICATION_SUMMARY.byStatus.deferred).toBe(4);
     expect(SOURCE_VERIFICATION_SUMMARY.byStatus.blocked).toBe(0);
@@ -561,31 +554,49 @@ type SourceVerificationEntry = {
   sourceLine: number;
   status: string;
   phase: string;
+  notes: string;
 };
 
 function readDoc() {
   return fs.readFileSync(path.join(process.cwd(), "docs/source-verification.md"), "utf8");
 }
 
+const statuses = ["implemented", "verified", "ambiguous", "deferred", "blocked"] as const;
+
+function statusLabel(status: string) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 describe("source verification document", () => {
   it("summarizes the tracker for reviewers", () => {
     const doc = readDoc();
     const entries = tracker as SourceVerificationEntry[];
+    const counts = Object.fromEntries(statuses.map((status) => [status, 0]));
+
+    for (const entry of entries) {
+      counts[entry.status as (typeof statuses)[number]] += 1;
+    }
 
     expect(doc).toContain("# Miru 1 v2e Source Verification");
     expect(doc).toContain(`Total headings: ${entries.length}`);
-    expect(doc).toContain("Implemented: 9");
-    expect(doc).toContain("Ambiguous: 9");
-    expect(doc).toContain("Deferred: 4");
+
+    for (const status of statuses) {
+      expect(doc).toContain(`${statusLabel(status)}: ${counts[status]}`);
+    }
   });
 
   it("contains a table row for every source requirement heading", () => {
     const doc = readDoc();
     const entries = tracker as SourceVerificationEntry[];
+    const trackerRows = doc
+      .split("\n")
+      .filter((line) => line.startsWith("| `"));
+
+    expect(trackerRows).toHaveLength(entries.length);
 
     for (const entry of entries) {
-      const row = `| \`${entry.id}\` | ${entry.status} | ${entry.phase} | ${entry.headingPath.join(" > ")} | ${entry.sourcePath}:${entry.sourceLine} |`;
-
+      const escapedNotes = entry.notes.replace(/\|/g, "\\|");
+      const row = `| \`${entry.id}\` | ${entry.status} | ${entry.phase} | ${entry.headingPath.join(" > ")} | ${entry.sourcePath}:${entry.sourceLine} | ${escapedNotes} |`;
       expect(doc).toContain(row);
     }
   });
