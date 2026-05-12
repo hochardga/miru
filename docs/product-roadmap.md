@@ -158,7 +158,7 @@
 **Phase prompt - give this to your coding agent:**
 > "Read docs/product-roadmap.md and find Phase 2. Then read only the Reference sections listed above from docs/prd.md, docs/product-vision.md, and docs/miru-rules-requirements.md. Continue from the first unchecked task. After each task, mark it complete in the roadmap. When all tasks are done, create a branch `phase-2/standard-rules-coverage`, commit, push, and open a PR for review."
 
-- [ ] **TASK-027** - Create source verification tracker
+- [x] **TASK-027** - Create source verification tracker
   Files: `src/data/miru1v2e/manifest.ts`, `tests/fixtures/miru1v2e/source-verification.json`, `docs/source-verification.md`
   Notes: Track implemented, visually verified, ambiguous, and deferred rules. Verify: tracker lists every heading from `docs/miru-rules-requirements.md`.
 
