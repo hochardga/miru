@@ -5,8 +5,8 @@ This tracker maps the current `docs/miru-rules-requirements.md` headings to Phas
 ## Summary
 
 - Total headings: 81
-- Implemented: 9
-- Verified: 59
+- Implemented: 0
+- Verified: 68
 - Ambiguous: 9
 - Deferred: 4
 - Blocked: 0
@@ -25,24 +25,24 @@ This tracker maps the current `docs/miru-rules-requirements.md` headings to Phas
 | --- | --- | --- | --- | --- | --- |
 | `requirement-language` | verified | 2E | Requirement Language | docs/miru-rules-requirements.md:9 | Requirement text is extracted and ready for implementation tracking. |
 | `core-game-model` | verified | 2E | Core Game Model | docs/miru-rules-requirements.md:16 | Requirement text is extracted and ready for implementation tracking. |
-| `core-game-model-game-session` | implemented | current | Core Game Model > Game Session | docs/miru-rules-requirements.md:18 | Covered by the current Phase 1 engine, map, survival, or combat implementation and tests. |
-| `core-game-model-player-character-state` | implemented | current | Core Game Model > Player Character State | docs/miru-rules-requirements.md:31 | Covered by the current Phase 1 engine, map, survival, or combat implementation and tests. |
-| `core-game-model-map-state` | implemented | current | Core Game Model > Map State | docs/miru-rules-requirements.md:46 | Covered by the current Phase 1 engine, map, survival, or combat implementation and tests. |
+| `core-game-model-game-session` | verified | current | Core Game Model > Game Session | docs/miru-rules-requirements.md:18 | Requirement text is extracted and ready for implementation tracking. |
+| `core-game-model-player-character-state` | verified | current | Core Game Model > Player Character State | docs/miru-rules-requirements.md:31 | Requirement text is extracted and ready for implementation tracking. |
+| `core-game-model-map-state` | verified | current | Core Game Model > Map State | docs/miru-rules-requirements.md:46 | Requirement text is extracted and ready for implementation tracking. |
 | `turn-structure` | verified | 2E | Turn Structure | docs/miru-rules-requirements.md:62 | Requirement text is extracted and ready for implementation tracking. |
 | `turn-structure-daily-turn-routing` | verified | 2E | Turn Structure > Daily Turn Routing | docs/miru-rules-requirements.md:64 | Requirement text is extracted and ready for implementation tracking. |
 | `turn-structure-terrain-roll` | verified | 2E | Turn Structure > Terrain Roll | docs/miru-rules-requirements.md:77 | Requirement text is extracted and ready for implementation tracking. |
 | `turn-structure-event-roll` | verified | 2E | Turn Structure > Event Roll | docs/miru-rules-requirements.md:88 | Requirement text is extracted and ready for implementation tracking. |
 | `turn-structure-small-injury` | verified | 2E | Turn Structure > Small Injury | docs/miru-rules-requirements.md:95 | Requirement text is extracted and ready for implementation tracking. |
 | `survival-rules` | verified | 2E | Survival Rules | docs/miru-rules-requirements.md:107 | Requirement text is extracted and ready for implementation tracking. |
-| `survival-rules-camping` | implemented | current | Survival Rules > Camping | docs/miru-rules-requirements.md:109 | Covered by the current Phase 1 engine, map, survival, or combat implementation and tests. |
-| `survival-rules-food-effects` | implemented | current | Survival Rules > Food Effects | docs/miru-rules-requirements.md:119 | Covered by the current Phase 1 engine, map, survival, or combat implementation and tests. |
-| `survival-rules-sleep-effects` | implemented | current | Survival Rules > Sleep Effects | docs/miru-rules-requirements.md:128 | Covered by the current Phase 1 engine, map, survival, or combat implementation and tests. |
-| `survival-rules-starvation` | implemented | current | Survival Rules > Starvation | docs/miru-rules-requirements.md:135 | Covered by the current Phase 1 engine, map, survival, or combat implementation and tests. |
-| `survival-rules-sleep-deprivation` | implemented | current | Survival Rules > Sleep Deprivation | docs/miru-rules-requirements.md:148 | Covered by the current Phase 1 engine, map, survival, or combat implementation and tests. |
+| `survival-rules-camping` | verified | current | Survival Rules > Camping | docs/miru-rules-requirements.md:109 | Requirement text is extracted and ready for implementation tracking. |
+| `survival-rules-food-effects` | verified | current | Survival Rules > Food Effects | docs/miru-rules-requirements.md:119 | Requirement text is extracted and ready for implementation tracking. |
+| `survival-rules-sleep-effects` | verified | current | Survival Rules > Sleep Effects | docs/miru-rules-requirements.md:128 | Requirement text is extracted and ready for implementation tracking. |
+| `survival-rules-starvation` | verified | current | Survival Rules > Starvation | docs/miru-rules-requirements.md:135 | Requirement text is extracted and ready for implementation tracking. |
+| `survival-rules-sleep-deprivation` | verified | current | Survival Rules > Sleep Deprivation | docs/miru-rules-requirements.md:148 | Requirement text is extracted and ready for implementation tracking. |
 | `combat-rules` | verified | 2B | Combat Rules | docs/miru-rules-requirements.md:158 | Requirement text is extracted and ready for implementation tracking. |
 | `combat-rules-combat-flow` | verified | 2B | Combat Rules > Combat Flow | docs/miru-rules-requirements.md:160 | Requirement text is extracted and ready for implementation tracking. |
 | `combat-rules-player-combat-actions` | verified | 2B | Combat Rules > Player Combat Actions | docs/miru-rules-requirements.md:169 | Requirement text is extracted and ready for implementation tracking. |
-| `combat-rules-basic-attack` | implemented | current | Combat Rules > Basic Attack | docs/miru-rules-requirements.md:176 | Covered by the current Phase 1 engine, map, survival, or combat implementation and tests. |
+| `combat-rules-basic-attack` | verified | current | Combat Rules > Basic Attack | docs/miru-rules-requirements.md:176 | Requirement text is extracted and ready for implementation tracking. |
 | `combat-rules-tech-skills` | verified | 2B | Combat Rules > Tech Skills | docs/miru-rules-requirements.md:184 | Requirement text is extracted and ready for implementation tracking. |
 | `combat-rules-escape` | verified | 2B | Combat Rules > Escape | docs/miru-rules-requirements.md:195 | Requirement text is extracted and ready for implementation tracking. |
 | `combat-rules-status-effects` | verified | 2B | Combat Rules > Status Effects | docs/miru-rules-requirements.md:209 | Requirement text is extracted and ready for implementation tracking. |

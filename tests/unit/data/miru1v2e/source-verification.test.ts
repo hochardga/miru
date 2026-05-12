@@ -19,6 +19,17 @@ type SourceVerificationEntry = {
 
 const VALID_STATUSES = ["implemented", "verified", "ambiguous", "deferred", "blocked"] as const;
 const SOURCE_PATH = "docs/miru-rules-requirements.md";
+const PARTIALLY_IMPLEMENTED_PHASE_1_IDS = [
+  "core-game-model-game-session",
+  "core-game-model-player-character-state",
+  "core-game-model-map-state",
+  "survival-rules-camping",
+  "survival-rules-food-effects",
+  "survival-rules-sleep-effects",
+  "survival-rules-starvation",
+  "survival-rules-sleep-deprivation",
+  "combat-rules-basic-attack",
+] as const;
 
 function slugify(value: string) {
   return value
@@ -102,5 +113,13 @@ describe("source verification tracker fixture", () => {
     expect(entries.some((entry) => entry.status === "deferred")).toBe(true);
     expect(entries.find((entry) => entry.id === "calendar-and-story-event-requirements-day-50-power-supply")?.status).toBe("ambiguous");
     expect(entries.find((entry) => entry.id === "challenge-mode-requirements")?.status).toBe("deferred");
+  });
+
+  it("tracks partially implemented Phase 1 rule groups as verified until they are complete", () => {
+    const entries = tracker as SourceVerificationEntry[];
+
+    for (const id of PARTIALLY_IMPLEMENTED_PHASE_1_IDS) {
+      expect(entries.find((entry) => entry.id === id)?.status).toBe("verified");
+    }
   });
 });

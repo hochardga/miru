@@ -58,8 +58,8 @@ export const SOURCE_VERIFICATION_ENTRIES = [
     "sourcePath": "docs/miru-rules-requirements.md",
     "sourceLine": 18,
     "phase": "current",
-    "status": "implemented",
-    "notes": "Covered by the current Phase 1 engine, map, survival, or combat implementation and tests."
+    "status": "verified",
+    "notes": "Requirement text is extracted and ready for implementation tracking."
   },
   {
     "id": "core-game-model-player-character-state",
@@ -72,8 +72,8 @@ export const SOURCE_VERIFICATION_ENTRIES = [
     "sourcePath": "docs/miru-rules-requirements.md",
     "sourceLine": 31,
     "phase": "current",
-    "status": "implemented",
-    "notes": "Covered by the current Phase 1 engine, map, survival, or combat implementation and tests."
+    "status": "verified",
+    "notes": "Requirement text is extracted and ready for implementation tracking."
   },
   {
     "id": "core-game-model-map-state",
@@ -86,8 +86,8 @@ export const SOURCE_VERIFICATION_ENTRIES = [
     "sourcePath": "docs/miru-rules-requirements.md",
     "sourceLine": 46,
     "phase": "current",
-    "status": "implemented",
-    "notes": "Covered by the current Phase 1 engine, map, survival, or combat implementation and tests."
+    "status": "verified",
+    "notes": "Requirement text is extracted and ready for implementation tracking."
   },
   {
     "id": "turn-structure",
@@ -182,8 +182,8 @@ export const SOURCE_VERIFICATION_ENTRIES = [
     "sourcePath": "docs/miru-rules-requirements.md",
     "sourceLine": 109,
     "phase": "current",
-    "status": "implemented",
-    "notes": "Covered by the current Phase 1 engine, map, survival, or combat implementation and tests."
+    "status": "verified",
+    "notes": "Requirement text is extracted and ready for implementation tracking."
   },
   {
     "id": "survival-rules-food-effects",
@@ -196,8 +196,8 @@ export const SOURCE_VERIFICATION_ENTRIES = [
     "sourcePath": "docs/miru-rules-requirements.md",
     "sourceLine": 119,
     "phase": "current",
-    "status": "implemented",
-    "notes": "Covered by the current Phase 1 engine, map, survival, or combat implementation and tests."
+    "status": "verified",
+    "notes": "Requirement text is extracted and ready for implementation tracking."
   },
   {
     "id": "survival-rules-sleep-effects",
@@ -210,8 +210,8 @@ export const SOURCE_VERIFICATION_ENTRIES = [
     "sourcePath": "docs/miru-rules-requirements.md",
     "sourceLine": 128,
     "phase": "current",
-    "status": "implemented",
-    "notes": "Covered by the current Phase 1 engine, map, survival, or combat implementation and tests."
+    "status": "verified",
+    "notes": "Requirement text is extracted and ready for implementation tracking."
   },
   {
     "id": "survival-rules-starvation",
@@ -224,8 +224,8 @@ export const SOURCE_VERIFICATION_ENTRIES = [
     "sourcePath": "docs/miru-rules-requirements.md",
     "sourceLine": 135,
     "phase": "current",
-    "status": "implemented",
-    "notes": "Covered by the current Phase 1 engine, map, survival, or combat implementation and tests."
+    "status": "verified",
+    "notes": "Requirement text is extracted and ready for implementation tracking."
   },
   {
     "id": "survival-rules-sleep-deprivation",
@@ -238,8 +238,8 @@ export const SOURCE_VERIFICATION_ENTRIES = [
     "sourcePath": "docs/miru-rules-requirements.md",
     "sourceLine": 148,
     "phase": "current",
-    "status": "implemented",
-    "notes": "Covered by the current Phase 1 engine, map, survival, or combat implementation and tests."
+    "status": "verified",
+    "notes": "Requirement text is extracted and ready for implementation tracking."
   },
   {
     "id": "combat-rules",
@@ -293,8 +293,8 @@ export const SOURCE_VERIFICATION_ENTRIES = [
     "sourcePath": "docs/miru-rules-requirements.md",
     "sourceLine": 176,
     "phase": "current",
-    "status": "implemented",
-    "notes": "Covered by the current Phase 1 engine, map, survival, or combat implementation and tests."
+    "status": "verified",
+    "notes": "Requirement text is extracted and ready for implementation tracking."
   },
   {
     "id": "combat-rules-tech-skills",

@@ -17,7 +17,8 @@ describe("Miru 1 v2e source verification manifest", () => {
   it("summarizes source verification statuses for the manifest", () => {
     expect(SOURCE_VERIFICATION_SUMMARY).toEqual(summarizeSourceVerification(SOURCE_VERIFICATION_ENTRIES));
     expect(SOURCE_VERIFICATION_SUMMARY.total).toBe(81);
-    expect(SOURCE_VERIFICATION_SUMMARY.byStatus.implemented).toBe(9);
+    expect(SOURCE_VERIFICATION_SUMMARY.byStatus.implemented).toBe(0);
+    expect(SOURCE_VERIFICATION_SUMMARY.byStatus.verified).toBe(68);
     expect(SOURCE_VERIFICATION_SUMMARY.byStatus.ambiguous).toBe(9);
     expect(SOURCE_VERIFICATION_SUMMARY.byStatus.deferred).toBe(4);
     expect(SOURCE_VERIFICATION_SUMMARY.byStatus.blocked).toBe(0);
